@@ -298,8 +298,14 @@ class mgCTextureBlock {
 public:
     int              unk_0;
     int              unk_4;
+#ifdef PLATFORM_PC
+    /* 16 bytes as on the EE: blocks are indexed with a 16-byte stride. */
+    ptr32<mgCTexture>      texture;
+    ptr32<mgCTextureAnime> anime;
+#else
     mgCTexture      *texture; /**< First texture of the block's list, or NULL when the block is empty. */
     mgCTextureAnime *anime;   /**< Texture animation of the block, or NULL. */
+#endif
 
     /**
      *
@@ -351,8 +357,14 @@ STATIC_ASSERT(sizeof(mgCTextureBlock) == 0x10);
  *
  */
 struct mgTEXTURE_HASH {
+#ifdef PLATFORM_PC
+    /* 8 bytes as on the EE: the links are allocated 8 bytes apiece. */
+    ptr32<mgCTexture>     texture;
+    ptr32<mgTEXTURE_HASH> next;
+#else
     mgCTexture     *texture; /**< Texture the link refers to. */
     mgTEXTURE_HASH *next;    /**< Following link of the same chain, or NULL. */
+#endif
 };
 
 STATIC_ASSERT(sizeof(mgTEXTURE_HASH) == 8);

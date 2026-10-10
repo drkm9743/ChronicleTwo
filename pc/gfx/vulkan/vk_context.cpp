@@ -1,11 +1,19 @@
 #include "vk_context.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 
 namespace gfx {
 
 namespace {
+
+bool ContainsIgnoringCase(const char *text, const std::string &part) {
+    std::string a = text, b = part;
+    for (char &c : a) c = char(std::tolower(static_cast<unsigned char>(c)));
+    for (char &c : b) c = char(std::tolower(static_cast<unsigned char>(c)));
+    return a.find(b) != std::string::npos;
+}
 
 bool HasExtension(const std::vector<VkExtensionProperties> &list, const char *name) {
     for (const VkExtensionProperties &e : list) {
@@ -181,6 +189,9 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
             int score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU     ? 3
                         : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2
                                                                                      : 1;
+            if (!options.device_name.empty() && ContainsIgnoringCase(props.deviceName, options.device_name)) {
+                score += 10;
+            }
             if (score > best_score) {
                 best_score = score;
                 physical_device = pd;

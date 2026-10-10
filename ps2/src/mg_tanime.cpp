@@ -676,7 +676,11 @@ CList<mgCTexAnimeData> *mgCTextureAnime::NewTexAnimeGroupData(int group, mgCMemo
 
     node->Initialize();
 
+#ifdef PLATFORM_PC
+    CList<mgCTexAnimeData> **slot = &list[group];
+#else
     CList<mgCTexAnimeData> **slot = (CList<mgCTexAnimeData> **) ((group << 2) + (int) this + 0x64);
+#endif
     CList<mgCTexAnimeData>  *p = *slot;
     CList<mgCTexAnimeData>  *tail;
     CList<mgCTexAnimeData>  *next;

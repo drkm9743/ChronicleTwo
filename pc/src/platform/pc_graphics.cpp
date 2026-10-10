@@ -45,6 +45,9 @@ bool StartRenderer(Graphics &g) {
     gfx::VulkanContextOptions options;
     g.window.Configure(options);
     options.validation = std::getenv("CHRONICLETWO_VK_VALIDATION") != nullptr;
+    if (const char *gpu = std::getenv("CHRONICLETWO_GPU")) {
+        options.device_name = gpu;
+    }
     // Fields are paced here, so presentation should not block on the display.
     options.vsync = false;
     if (!g.context.Init(options, &error)) {
@@ -52,6 +55,7 @@ bool StartRenderer(Graphics &g) {
         g.window.Close();
         return false;
     }
+    std::fprintf(stderr, "graphics: %s\n", g.context.properties.deviceName);
     g.renderer.reset(new gfx::VulkanRenderer(g.context, gfx::GetMachine().memory));
     if (!g.renderer->Init(&error)) {
         std::fprintf(stderr, "graphics: %s\n", error.c_str());

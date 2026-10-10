@@ -34,7 +34,7 @@ const char     kExecutable[] = "SCES_511.90";
 /**
  * The EE scratchpad, at the address the game writes it through. The game
  * builds packets there by address (GetScrPad returns 0x70000000), and with
- * /LARGEADDRESSAWARE:NO that address is ours to take.
+ * no ASLR nothing else has taken it this early.
  */
 void MapScratchpad() {
     void *spr = VirtualAlloc(reinterpret_cast<void *>(uintptr_t(kScratchpadAddress)), gfx::kScratchpadBytes,
@@ -58,7 +58,7 @@ void CheckAddressSpace() {
     if (highest >= 0x80000000ull) {
         std::fprintf(stderr,
                      "chronicletwo: memory above 2 GiB (0x%llx); the executable must be linked with "
-                     "/LARGEADDRESSAWARE:NO\n",
+                     "a low image base and without ASLR\n",
                      (unsigned long long) highest);
         std::exit(1);
     }

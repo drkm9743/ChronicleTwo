@@ -29,6 +29,8 @@ struct VulkanContextOptions {
     bool vsync = false;
     /** Treats devices as at most this version (tests use 1.2 to take the extension path). */
     uint32_t max_api_version = VK_API_VERSION_1_3;
+    /** Prefers the device whose name contains this text (case-insensitive). */
+    std::string device_name;
 };
 
 class VulkanContext {

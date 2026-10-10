@@ -14476,10 +14476,14 @@ int _SWE_SET_COLOR(RS_STACKDATA *stack, int argc) {
         return 0;
     }
 
+#ifdef PLATFORM_PC
+    effect_slot = &chara->sword_effect[slot];
+#else
     effect_slot =
         (CSWordAfterEffect *
              *) ((slot << 2) + (int) chara +
                  chara_sword_after_offset);
+#endif
 
     if (*effect_slot == NULL) {
         return 0;
@@ -14524,10 +14528,14 @@ int _SWE_SET_TEXTURE(RS_STACKDATA *stack, int argc) {
         return 0;
     }
 
+#ifdef PLATFORM_PC
+    effect_slot = &chara->sword_effect[slot];
+#else
     effect_slot =
         (CSWordAfterEffect *
              *) ((slot << 2) + (int) chara +
                  chara_sword_after_offset);
+#endif
 
     if (*effect_slot == NULL) {
         return 0;
@@ -14567,10 +14575,14 @@ int _SWE_START_EFFECT(RS_STACKDATA *stack, int argc) {
         return 0;
     }
 
+#ifdef PLATFORM_PC
+    effect_slot = &chara->sword_effect[slot];
+#else
     effect_slot =
         (CSWordAfterEffect *
              *) ((slot << 2) + (int) chara +
                  chara_sword_after_offset);
+#endif
 
     if (*effect_slot == NULL) {
         return 0;

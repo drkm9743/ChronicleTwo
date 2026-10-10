@@ -306,8 +306,11 @@ bool VulkanRenderer::CreateImage(Image &image, uint32_t width, uint32_t height, 
     VkMemoryAllocateInfo mai = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     mai.allocationSize = req.size;
     mai.memoryTypeIndex = ctx_.FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    if (mai.memoryTypeIndex == UINT32_MAX ||
-        vkAllocateMemory(ctx_.device, &mai, nullptr, &image.memory) != VK_SUCCESS) {
+    VkResult allocated = mai.memoryTypeIndex == UINT32_MAX
+                             ? VK_ERROR_FEATURE_NOT_PRESENT
+                             : vkAllocateMemory(ctx_.device, &mai, nullptr, &image.memory);
+    if (allocated != VK_SUCCESS) {
+        std::fprintf(stderr, "gfx: no memory for a %ux%u image (VkResult %d)\n", width, height, int(allocated));
         vkDestroyImage(ctx_.device, image.image, nullptr);
         image = Image();
         return false;
@@ -1419,6 +1422,9 @@ void VulkanRenderer::Present(const GsDisplayState &display) {
                         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                         VK_IMAGE_ASPECT_COLOR_BIT);
         }
+        have_display = display_.image != VK_NULL_HANDLE;
+    }
+    if (have_display && source == nullptr) {
         std::vector<uint32_t> rgba(size_t(w) * h);
         uint32_t              read_psm = IsColorFormat(psm) ? psm : uint32_t(PSMCT32);
         for (int y = 0; y < h; y++) {

@@ -196,6 +196,11 @@ void Reschedule() {
 void WINAPI FiberMain(LPVOID param) {
     int     id = int(intptr_t(param));
     Kernel &k = K();
+    // Game threads keep addresses of their locals in 32-bit integers.
+    if (uintptr_t(&id) >= 0x80000000u) {
+        std::fprintf(stderr, "ee: thread %d got a stack above 2 GiB (%p)\n", id, static_cast<void *>(&id));
+        std::exit(1);
+    }
     for (;;) {
         Thread &t = k.threads[id];
         SetLockDepth(0); // a new thread starts with interrupts enabled

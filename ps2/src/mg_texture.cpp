@@ -520,7 +520,11 @@ void mgCTextureManager::SetTableBuffer(int texture_count, int block_total, mgCMe
     count = texture_max;
     bytes = count * 0x70;
     texture_buf = new (memory->Alloc(align16_blocks(bytes) + 2)) mgCTexture[count];
+#ifdef PLATFORM_PC
+    bytes = texture_max * sizeof(mgCTexture *);
+#else
     bytes = texture_max * 4;
+#endif
     texture_stack = (mgCTexture **) memory->Alloc(align16_blocks(bytes));
 
     for (slot = 0; slot < texture_max; slot++) {
@@ -532,7 +536,11 @@ void mgCTextureManager::SetTableBuffer(int texture_count, int block_total, mgCMe
     bytes = hash_max * 8;
     hash_buf = (mgTEXTURE_HASH *) operator new[](
         hash_max * 8, memory->Alloc(align16_blocks(bytes) + 2));
+#ifdef PLATFORM_PC
+    bytes = hash_max * sizeof(mgTEXTURE_HASH *);
+#else
     bytes = hash_max * 4;
+#endif
     hash_stack = (mgTEXTURE_HASH **) memory->Alloc(align16_blocks(bytes));
 
     for (node = 0; node < hash_max; node++) {
@@ -582,7 +590,11 @@ void mgCTextureManager::Initialize(int start, int end) {
         name_suffix[0] = 0;
 
         for (bucket = 0; bucket < 101; bucket++) {
+#ifdef PLATFORM_PC
+            hash_table[bucket] = 0;
+#else
             *(mgTEXTURE_HASH **) ((bucket << 2) + (int) this + offsetof(mgCTextureManager, hash_table)) = 0;
+#endif
         }
 
         for (node = 0; node < hash_max; node++) {
@@ -690,7 +702,11 @@ mgCTexture *mgCTextureManager::SearchHash(char *name, int mode) {
     mgTEXTURE_HASH *node;
     int             bucket = hash(name);
 
+#ifdef PLATFORM_PC
+    for (node = hash_table[bucket]; node != NULL;
+#else
     for (node = *(mgTEXTURE_HASH **) ((bucket << 2) + (int) this + offsetof(mgCTextureManager, hash_table)); node != NULL;
+#endif
          node = node->next) {
         if (strcmp(name, node->texture->name) == 0) {
             if (mode < 0 || node->texture->block == mode) {
@@ -1683,7 +1699,11 @@ int mgCTextureManager::ReloadTexture(int block, u_int *packet) {
             }
 
             for (level = 0; level < MG_TEXTURE_LEVEL_MAX; level++) {
+#ifdef PLATFORM_PC
+                u_long128 **image = &texture->image[level];
+#else
                 u_long128 **image = ((mgCTexture *) ((level << 2) + (int) texture))->image;
+#endif
 
                 if (*image == NULL) {
                     break;

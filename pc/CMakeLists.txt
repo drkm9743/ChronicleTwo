@@ -163,18 +163,29 @@ set_target_properties(chronicletwo PROPERTIES
     CXX_STANDARD_REQUIRED ON)
 
 # The game keeps pointers in 32-bit integers (about 1,300 casts), so every
-# address it can reach must be below 2 GiB: no large-address awareness, a low
-# image base and no ASLR. Windows then keeps the whole process under 2 GiB.
-# The scratchpad is mapped at 0x70000000, where the game writes it.
+# address it can reach must be below 2 GiB: a low image base and no ASLR, so
+# Windows hands out memory from the bottom up and the game's own memory (the
+# image, the scratchpad at 0x70000000, thread stacks made early) stays low.
+# The process as a whole stays large-address aware: GPU drivers reserve
+# address space of their own and fail inside 2 GiB (NVIDIA presenting through
+# DXGI on hybrid laptops does). PC_LARGE_ADDRESS_AWARE=OFF caps the whole
+# process at 2 GiB instead, as a test.
+option(PC_LARGE_ADDRESS_AWARE "Let the process use memory above 2 GiB" ON)
 if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC" OR MSVC)
+    if(NOT PC_LARGE_ADDRESS_AWARE)
+        target_link_options(chronicletwo PRIVATE /LARGEADDRESSAWARE:NO)
+    endif()
     target_link_options(chronicletwo PRIVATE
-        /LARGEADDRESSAWARE:NO /BASE:0x400000 /DYNAMICBASE:NO /HIGHENTROPYVA:NO /STACK:0x800000)
+        /BASE:0x400000 /DYNAMICBASE:NO /HIGHENTROPYVA:NO /STACK:0x800000)
     # The game calls printf, sprintf and vsprintf as functions, which the UCRT
     # only exports through this library.
     target_link_libraries(chronicletwo PRIVATE legacy_stdio_definitions)
 else()
+    if(NOT PC_LARGE_ADDRESS_AWARE)
+        target_link_options(chronicletwo PRIVATE -Wl,-Xlink=-largeaddressaware:no)
+    endif()
     target_link_options(chronicletwo PRIVATE
-        -Wl,-Xlink=-largeaddressaware:no -Wl,--image-base=0x400000
+        -Wl,--image-base=0x400000
         -Wl,--disable-dynamicbase -Wl,--disable-high-entropy-va -Wl,--stack=0x800000
         -static)
 endif()
