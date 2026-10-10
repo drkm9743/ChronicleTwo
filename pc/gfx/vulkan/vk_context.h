@@ -27,6 +27,8 @@ struct VulkanContextOptions {
     bool validation = false;
     /** Prefer FIFO (tear-free, may block) over MAILBOX/IMMEDIATE. */
     bool vsync = false;
+    /** Treats devices as at most this version (tests use 1.2 to take the extension path). */
+    uint32_t max_api_version = VK_API_VERSION_1_3;
 };
 
 class VulkanContext {

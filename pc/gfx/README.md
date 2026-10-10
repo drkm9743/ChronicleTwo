@@ -35,12 +35,23 @@ cmake --build build/gfx
 ctest --test-dir build/gfx
 ```
 
-`gfx_core_test` needs no GPU. `gfx_vulkan_test` draws through a Vulkan 1.3
+`gfx_core_test` needs no GPU. `gfx_vulkan_test` draws through a Vulkan
 device and reads the results back through GS transfers; Mesa's lavapipe is
-enough. With SDL 3 available (`-DCMAKE_PREFIX_PATH=<SDL3 install>`),
+enough. `gfx_vulkan_test_1_2` runs the same tests limited to Vulkan 1.2.
+
+## Platforms
+
+The renderer runs on Windows, Linux and macOS. It needs Vulkan 1.3, or
+Vulkan 1.2 with `VK_KHR_dynamic_rendering` and `VK_EXT_extended_dynamic_state`
+(what MoltenVK offers on macOS). The loader is opened at run time
+(`vulkan-1.dll`, `libvulkan.so.1`, or on macOS `libvulkan.1.dylib` and then
+`libMoltenVK.dylib`); portability devices are enumerated and
+`VK_KHR_portability_subset` is enabled when the device has it. The blend
+avoids constant alpha factors, which MoltenVK lacks. The VU1 programs set the
+rounding mode they need through MXCSR on x86-64 and FPCR on ARM64. With SDL 3 available (`-DCMAKE_PREFIX_PATH=<SDL3 install>`),
 `gfx_sdl_demo` opens a window and draws a moving scene.
 
-In the WIN64 build, `pc/CMakeLists.txt` adds this directory and links it into
+In the game build, `pc/CMakeLists.txt` (today WIN64 only) adds this directory and links it into
 `chronicletwo_platform`; the Vulkan headers come from the Vulkan SDK or from
 SDL's source tree.
 

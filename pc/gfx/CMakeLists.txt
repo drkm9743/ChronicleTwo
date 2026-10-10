@@ -150,6 +150,8 @@ if(GFX_TESTS)
         set_target_properties(gfx_vulkan_test PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
         # Needs a Vulkan driver; lavapipe is enough.
         add_test(NAME gfx_vulkan_test COMMAND gfx_vulkan_test)
+        add_test(NAME gfx_vulkan_test_1_2 COMMAND gfx_vulkan_test)
+        set_tests_properties(gfx_vulkan_test_1_2 PROPERTIES ENVIRONMENT GFX_VULKAN_1_2=1)
     endif()
     if(TARGET chronicletwo_gfx_sdl)
         # Not a test: opens a window (run it by hand to check presentation).

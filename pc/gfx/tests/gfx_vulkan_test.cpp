@@ -56,6 +56,10 @@ struct Fixture {
     bool Init() {
         VulkanContextOptions options;
         options.validation = std::getenv("GFX_VALIDATION") != nullptr;
+        // GFX_VULKAN_1_2: take the extension path MoltenVK and older drivers need.
+        if (std::getenv("GFX_VULKAN_1_2") != nullptr) {
+            options.max_api_version = VK_API_VERSION_1_2;
+        }
         std::string error;
         if (!ctx.Init(options, &error)) {
             std::printf("gfx_vulkan_test: skipped, no usable Vulkan device (%s)\n", error.c_str());

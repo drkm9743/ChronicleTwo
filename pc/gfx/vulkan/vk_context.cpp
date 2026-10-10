@@ -54,13 +54,26 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
     if (vkEnumerateInstanceVersion) {
         vkEnumerateInstanceVersion(&api);
     }
-    if (api < VK_API_VERSION_1_3) {
-        return Fail(error, "the Vulkan loader is older than 1.3");
+    if (api < VK_API_VERSION_1_2) {
+        return Fail(error, "the Vulkan loader is older than 1.2");
     }
 
     std::vector<const char *> extensions;
     for (const std::string &e : options.instance_extensions) {
         extensions.push_back(e.c_str());
+    }
+    // Implementations layered on another API (MoltenVK on macOS) are only
+    // listed when the application says it can live with their limits.
+    VkInstanceCreateFlags instance_flags = 0;
+    {
+        uint32_t count = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> available(count);
+        vkEnumerateInstanceExtensionProperties(nullptr, &count, available.data());
+        if (HasExtension(available, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
+            extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+            instance_flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        }
     }
     std::vector<const char *> layers;
     if (options.validation) {
@@ -78,8 +91,9 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
     VkApplicationInfo app = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     app.pApplicationName = "ChronicleTwo";
     app.pEngineName = "ChronicleTwo";
-    app.apiVersion = VK_API_VERSION_1_3;
+    app.apiVersion = std::min(api, uint32_t(VK_API_VERSION_1_3));
     VkInstanceCreateInfo ici = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    ici.flags = instance_flags;
     ici.pApplicationInfo = &app;
     ici.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     ici.ppEnabledExtensionNames = extensions.data();
@@ -97,33 +111,55 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
         }
     }
 
-    // Pick a device: Vulkan 1.3, dynamic rendering, dual-source blending, one
-    // queue for graphics (and presenting). Discrete GPUs first.
+    // Pick a device with dynamic rendering, the extended dynamic state and
+    // dual-source blending (core in Vulkan 1.3, extensions on 1.2 devices such
+    // as MoltenVK's) and one queue for graphics and presenting. Discrete GPUs first.
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
     std::vector<VkPhysicalDevice> devices(device_count);
     vkEnumeratePhysicalDevices(instance, &device_count, devices.data());
     int         best_score = -1;
+    bool        best_core13 = false, best_portability = false;
     std::string rejected;
     for (VkPhysicalDevice pd : devices) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(pd, &props);
-        if (props.apiVersion < VK_API_VERSION_1_3) {
-            rejected += std::string(props.deviceName) + ": below Vulkan 1.3; ";
-            continue;
-        }
-        VkPhysicalDeviceVulkan13Features f13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-        VkPhysicalDeviceFeatures2        f2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-        f2.pNext = &f13;
-        vkGetPhysicalDeviceFeatures2(pd, &f2);
-        if (!f13.dynamicRendering || !f2.features.dualSrcBlend) {
-            rejected += std::string(props.deviceName) + ": no dynamic rendering or dual-source blending; ";
+        uint32_t version = std::min(props.apiVersion, options.max_api_version);
+        if (version < VK_API_VERSION_1_2) {
+            rejected += std::string(props.deviceName) + ": below Vulkan 1.2; ";
             continue;
         }
         uint32_t ext_count = 0;
         vkEnumerateDeviceExtensionProperties(pd, nullptr, &ext_count, nullptr);
         std::vector<VkExtensionProperties> exts(ext_count);
         vkEnumerateDeviceExtensionProperties(pd, nullptr, &ext_count, exts.data());
+        bool                      core13 = version >= VK_API_VERSION_1_3;
+        bool                      dynamic_rendering = false, extended_dynamic_state = core13;
+        VkPhysicalDeviceFeatures2 f2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        if (core13) {
+            VkPhysicalDeviceVulkan13Features f13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+            f2.pNext = &f13;
+            vkGetPhysicalDeviceFeatures2(pd, &f2);
+            dynamic_rendering = f13.dynamicRendering;
+        } else if (HasExtension(exts, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) &&
+                   HasExtension(exts, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)) {
+            VkPhysicalDeviceDynamicRenderingFeaturesKHR dr = {
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR};
+            VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds = {
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
+            dr.pNext = &eds;
+            f2.pNext = &dr;
+            vkGetPhysicalDeviceFeatures2(pd, &f2);
+            dynamic_rendering = dr.dynamicRendering;
+            extended_dynamic_state = eds.extendedDynamicState;
+        } else {
+            vkGetPhysicalDeviceFeatures2(pd, &f2);
+        }
+        if (!dynamic_rendering || !extended_dynamic_state || !f2.features.dualSrcBlend) {
+            rejected += std::string(props.deviceName) +
+                        ": no dynamic rendering, extended dynamic state or dual-source blending; ";
+            continue;
+        }
         if (surface_ && !HasExtension(exts, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
             continue;
         }
@@ -150,6 +186,8 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
                 physical_device = pd;
                 queue_family = i;
                 properties = props;
+                best_core13 = core13;
+                best_portability = HasExtension(exts, "VK_KHR_portability_subset");
             }
             break;
         }
@@ -179,18 +217,36 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
     qci.queueFamilyIndex = queue_family;
     qci.queueCount = 1;
     qci.pQueuePriorities = &priority;
-    VkPhysicalDeviceVulkan13Features f13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    f13.dynamicRendering = VK_TRUE;
     VkPhysicalDeviceFeatures2 f2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    f2.pNext = &f13;
     f2.features.dualSrcBlend = VK_TRUE;
-    const char        *device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    VkPhysicalDeviceVulkan13Features                f13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR     dr = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR};
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
+    std::vector<const char *> device_extensions;
+    if (best_core13) {
+        f13.dynamicRendering = VK_TRUE;
+        f2.pNext = &f13;
+    } else {
+        dr.dynamicRendering = VK_TRUE;
+        eds.extendedDynamicState = VK_TRUE;
+        dr.pNext = &eds;
+        f2.pNext = &dr;
+        device_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+        device_extensions.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+    }
+    if (surface_) {
+        device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    }
+    if (best_portability) {
+        device_extensions.push_back("VK_KHR_portability_subset"); // required when offered
+    }
     VkDeviceCreateInfo dci = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     dci.pNext = &f2;
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
-    dci.enabledExtensionCount = surface_ ? 1 : 0;
-    dci.ppEnabledExtensionNames = device_extensions;
+    dci.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
+    dci.ppEnabledExtensionNames = device_extensions.data();
     if (vkCreateDevice(physical_device, &dci, nullptr, &device) != VK_SUCCESS) {
         return Fail(error, "vkCreateDevice failed");
     }

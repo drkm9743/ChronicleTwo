@@ -98,8 +98,10 @@ bool MapBlend(uint64_t alpha, PipelineKey &key) {
             factor_inv = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
             break;
         default:
-            factor_c = VK_BLEND_FACTOR_CONSTANT_ALPHA;
-            factor_inv = VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+            // All four blend constants are FIX; the colour form, since Metal
+            // (MoltenVK) has no constant alpha as a colour factor.
+            factor_c = VK_BLEND_FACTOR_CONSTANT_COLOR;
+            factor_inv = VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
             break;
     }
 

@@ -122,7 +122,7 @@ GFX_VK_DEVICE_FUNCTIONS(GFX_VK_DECLARE)
 GFX_VK_SWAPCHAIN_FUNCTIONS(GFX_VK_DECLARE)
 #undef GFX_VK_DECLARE
 
-/** Opens the system's Vulkan loader (vulkan-1.dll, libvulkan.so.1) and returns its vkGetInstanceProcAddr. */
+/** Opens the system's Vulkan loader (vulkan-1.dll, libvulkan.so.1, libvulkan.1.dylib) and returns its vkGetInstanceProcAddr. */
 PFN_vkGetInstanceProcAddr LoadSystemVulkan();
 
 void LoadGlobalFunctions(PFN_vkGetInstanceProcAddr get);
