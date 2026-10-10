@@ -7,8 +7,6 @@
 // `disc` is the ISO image or the folder holding the extracted disc; without
 // it, DC2_DISC or "disc" beside the executable (pc/src/host/host_paths.h).
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 
 #include <algorithm>
