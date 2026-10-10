@@ -478,7 +478,11 @@ int CEditMap::GetePlaceIDList(int *out, int max) {
 
     for (; i < edit_parts_max; i++) {
         s8 *part = (s8 *) edit_parts + offset;
+#ifdef PLATFORM_PC
+        int is_free = edit_parts[i].name[0] == 0;
+#else
         int is_free = part[0x70] == 0;
+#endif
 
         if (!is_free) {
             if (found >= max) {

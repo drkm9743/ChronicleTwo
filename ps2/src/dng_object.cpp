@@ -534,7 +534,11 @@ void CRocketLauncherMan::Draw() {
     int                offset = 0;
 
     for (i = 0; i < 24; i++) {
+#ifdef PLATFORM_PC
+        CRocketLauncher *entry = &rocket[i];
+#else
         CRocketLauncher *entry = (CRocketLauncher *) ((u8 *) this + offset);
+#endif
         (manager)->ReloadTexture(entry->tex_block, (sceVif1Packet *) NULL);
         entry->Draw();
         offset += 0x190;
@@ -558,7 +562,11 @@ void CRocketLauncherMan::Initialize(mgCFrame *frame, int texture_id, mgCTexture 
     int offset = 0;
 
     for (i = 0; i < 24; i++) {
+#ifdef PLATFORM_PC
+        CRocketLauncher *entry = &rocket[i];
+#else
         CRocketLauncher *entry = (CRocketLauncher *) ((u8 *) this + offset);
+#endif
         entry->Initialize();
         entry->model = frame;
         entry->tex_block = texture_id;
@@ -1129,7 +1137,11 @@ void CLaserGunMan::Draw() {
     int                offset = 0;
 
     for (i = 0; i < 16; i++) {
+#ifdef PLATFORM_PC
+        CLaserGun *entry = &laser[i];
+#else
         CLaserGun *entry = (CLaserGun *) ((u8 *) this + offset);
+#endif
         (manager)->ReloadTexture(entry->tex_block, (sceVif1Packet *) NULL);
         entry->Draw();
         offset += 0x130;
@@ -1153,7 +1165,11 @@ void CLaserGunMan::Initialize(mgCFrame *frame, int texture_id, mgCTexture *textu
     int offset = 0;
 
     for (i = 0; i < 16; i++) {
+#ifdef PLATFORM_PC
+        CLaserGun *entry = &laser[i];
+#else
         CLaserGun *entry = (CLaserGun *) ((u8 *) this + offset);
+#endif
         entry->Initialize();
         entry->model = frame;
         entry->tex_block = texture_id;

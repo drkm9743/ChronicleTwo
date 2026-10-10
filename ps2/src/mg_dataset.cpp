@@ -993,7 +993,11 @@ mgCFrame *mgCopyFrame(mgCFrame *frame, mgCMemory *memory, int copy_visual) {
     table = frame->frame_list;
 
     if (count > 0 && table != 0) {
+#ifdef PLATFORM_PC
+        bytes = count * sizeof(mgCFrame *);
+#else
         bytes = count * 4;
+#endif
 
         if (bytes & 0xF) {
             blocks = (bytes >> 4) + 1;

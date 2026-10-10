@@ -187,7 +187,11 @@ void CScriptInterpreter::SetTag(SPI_TAG_PARAM *tags) {
         // taken in turn from one run of storage.
         storage = (u8 *) hash_buckets;
         hash_table = (SPI_TAG_HASH **) storage;
+#ifdef PLATFORM_PC
+        storage = (u8 *) hash_entries;
+#else
         storage += sizeof(hash_buckets) + sizeof(unk_1d4);
+#endif
 
         for (i = 0; i < SPI_HASH_BUCKET_COUNT; i++) {
             hash_table[i] = NULL;

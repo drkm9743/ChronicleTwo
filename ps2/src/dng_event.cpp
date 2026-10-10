@@ -2456,7 +2456,11 @@ void LoadMonsterFile(int monster_id, int initialize) {
                 for (; i < MONSTER_ACTIVE_MAX; i++) {
 
                     void      *buffer = memory->stAlloc64(0xFA0);
+#ifdef PLATFORM_PC
+                    mgCMemory *slot = &ActiveMonster->memory[i];
+#else
                     mgCMemory *slot = (mgCMemory *) (monster_man + offset + 4);
+#endif
                     (slot)->stSetBuffer((u_long128 *) buffer, 0xFA0);
                     slot->stack_used = 0;
                     offset += 0x30;

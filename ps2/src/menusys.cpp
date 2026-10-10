@@ -12813,8 +12813,13 @@ void MenuItemSelectDraw() {
     int loaded_tex_no = -1;
 
     u8 *prim = (u8 *) GetMenuPrim();
+#ifdef PLATFORM_PC
+    ((mgCDrawPrim *) prim)->offset_x = 0;
+    ((mgCDrawPrim *) prim)->offset_y = 0;
+#else
     *(int *) (prim + 0x110) = 0;
     *(int *) (prim + 0x114) = 0;
+#endif
     mgRect<int> dest;
     mgRect<int> source;
     source.Set(0, 0, mgScreenWidth / 2, mgScreenHeight / 2);
@@ -12825,8 +12830,13 @@ void MenuItemSelectDraw() {
     source2.Set(0, 0, mgScreenWidth / 2, mgScreenHeight / 2);
     dest2.Set(-1, -1, mgScreenWidth + 1, mgScreenHeight + 1);
     DrawMenuMainFrmImg(loaded_tex_no, dest2, source2, 128, 128, 128, ItemSelectPtr->bg_alpha, 0);
+#ifdef PLATFORM_PC
+    ((mgCDrawPrim *) prim)->offset_x = 0;
+    ((mgCDrawPrim *) prim)->offset_y = 0;
+#else
     *(int *) (prim + 0x110) = 0;
     *(int *) (prim + 0x114) = 0;
+#endif
 
     if (ItemSelectPtr != NULL) {
         ItemSelectPtr->Draw();

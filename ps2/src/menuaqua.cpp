@@ -3352,10 +3352,17 @@ int FishIMGReplace(u_long128 *data, CCharacter2 *character, int item_no, BREEDFI
         SetCurrentDir(NULL);
 
         if (LoadFile2(path, data, &size, 0) != 0) {
+#ifdef PLATFORM_PC
+            texture_buffer = (u8 *) character->images[0];
+            mgTexManager.DeleteBlock(character->texture_block);
+            memcpy(texture_buffer, data, size);
+            mgTexManager.EnterIMGFile(texture_buffer, character->texture_block, NULL, NULL);
+#else
             texture_buffer = *(u8 **) (character_bytes + 0x2C4);
             mgTexManager.DeleteBlock(*(int *) (character_bytes + 0x2E4));
             memcpy(texture_buffer, data, size);
             mgTexManager.EnterIMGFile(texture_buffer, *(int *) (character_bytes + 0x2E4), NULL, NULL);
+#endif
         }
 
         SetCurrentDir(saved_dir);

@@ -423,8 +423,13 @@ void CDynamicAnime::Initialize() {
 
 void CDynamicAnime::NewFrameTable(int count, mgCMemory *memory) {
     frame_num = count;
+#ifdef PLATFORM_PC
+    frame = (mgCFrame **) memory->Alloc(align16_blocks(frame_num * sizeof(mgCFrame *)));
+    frame_pose = (DA_FRAME_POSE *) memory->Alloc(align16_blocks(frame_num * sizeof(DA_FRAME_POSE)));
+#else
     frame = (mgCFrame **) memory->Alloc(align16_blocks(frame_num * 4));
     frame_pose = (DA_FRAME_POSE *) memory->Alloc(align16_blocks(frame_num * 0x10));
+#endif
 
     for (int i = 0; i < frame_num; i++) {
         frame[i] = 0;

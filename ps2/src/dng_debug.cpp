@@ -357,7 +357,11 @@ void DBGCMD_ReloadEnemy(int monster_id, int reset) {
 
             for (; i < 24; i++) {
                 void      *buffer = stack->stAlloc64(0xFA0);
+#ifdef PLATFORM_PC
+                mgCMemory *memory = &ActiveMonster->memory[i];
+#else
                 mgCMemory *memory = (mgCMemory *) (manager + offset + 4);
+#endif
                 (memory)->stSetBuffer((u_long128 *) buffer, 0xFA0);
                 memory->stack_used = 0;
                 offset += 0x30;

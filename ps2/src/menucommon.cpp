@@ -1479,7 +1479,11 @@ int _MENU_TEXDATA_MALLOC(SPI_STACK *stack, int argc) {
         count = spiGetStackInt(stack);
     }
 
+#ifdef PLATFORM_PC
+    bytes = count * sizeof(MENU_BASETEXINFO);
+#else
     bytes = count * 0x20;
+#endif
 
     if (bytes & 0xF) {
         blocks = (bytes >> 4) + 1;
@@ -1579,7 +1583,11 @@ int _MENU_TEXDATA(SPI_STACK *stack, int argc) {
  */
 int _MENU_FORM_MALLOC(SPI_STACK *stack, int argc) {
     int          count = spiGetStackInt(stack);
+#ifdef PLATFORM_PC
+    unsigned int bytes = count * sizeof(CMenuPosDataForm);
+#else
     unsigned int bytes = count << 7;
+#endif
     unsigned int blocks;
 
     if (bytes & 0xF) {
@@ -2029,7 +2037,11 @@ int _MENU_ACTION_TABLE_NUM(SPI_STACK *stack, int argc) {
     }
 
     count = spiGetStackInt(stack);
+#ifdef PLATFORM_PC
+    bytes = count * sizeof(MENU_FORM_ACTION);
+#else
     bytes = count * 0x14;
+#endif
 
     if (bytes & 0xF) {
         blocks = (bytes >> 4) + 1;

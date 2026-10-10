@@ -3867,7 +3867,11 @@ int _DELETE_CHARA(RS_STACKDATA *stack, int argc) {
     int offset;
 
     for (i = 0, offset = 0; i < 32; i++, offset += 0x10) {
+#ifdef PLATFORM_PC
+        CEoh *handle = &EventObjHandleMother.eoh[i];
+#else
         CEoh *handle = (CEoh *) ((u8 *) &EventObjHandleMother + offset);
+#endif
 
         if (handle->type == 0) {
             int *chara_slot = &handle->scene_no;
