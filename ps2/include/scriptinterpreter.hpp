@@ -136,7 +136,11 @@ struct SPI_STACK {
      */
     SPI_STACK &operator=(const SPI_STACK &other) {
         type = other.type;
+#ifdef PLATFORM_PC
+        value.string = other.value.string;
+#else
         value.integer = other.value.integer;
+#endif
         return *this;
     }
 };

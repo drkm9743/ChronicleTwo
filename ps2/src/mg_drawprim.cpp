@@ -416,7 +416,12 @@ void mgCDrawPrim::Texture(mgCTexture *source) {
     mgCDrawPrimTexture *self = (mgCDrawPrimTexture *) this;
 
     if (source != 0) {
+#ifdef PLATFORM_PC
+        // The field mirror has the PS2 layout; copy the member itself.
+        __builtin_memcpy(&texture, source, sizeof(mgCTexture));
+#else
         self->texture = *(mgCTextureFields *) source;
+#endif
         texture.Bilinear(bilinear);
         u_long *packet = command_write;
         packet[0] = 0;
