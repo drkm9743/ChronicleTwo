@@ -410,7 +410,16 @@ void MessageTaskManager::Initialize() {
     task[5].next = NULL;
 }
 
+#ifdef PLATFORM_PC
+int CRedMarkModel::Draw() {
+    DrawBody();
+    return 0;
+}
+
+void CRedMarkModel::DrawBody() {
+#else
 void CRedMarkModel::Draw() {
+#endif
     float position[4];
     float saved_position[4];
 

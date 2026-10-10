@@ -4,7 +4,11 @@
  * reassembles them from ref/asm/split/main/{memcpy,memset,strcpy}.s and links
  * them like any other object -- there is no C library here to link against. */
 
+#ifdef PLATFORM_PC
+typedef __SIZE_TYPE__ size_t;
+#else
 typedef unsigned int size_t;
+#endif
 
 extern "C" {
 

@@ -309,6 +309,39 @@ static asm void test2(float *out_max, float *out_min) {
 static void test2(float *out_max, float *out_min);
 // clang-format on
 
+#ifdef NONMATCHING
+/**
+ *
+ * Transforms eight corners by a matrix, divides x and y of each through by the
+ * magnitude of its w, and gets the box around the results.
+ *
+ */
+static void ProjectCornersBox(float *corners, float (*matrix)[4], float *hi, float *lo) {
+    for (int corner = 0; corner < 8; corner++) {
+        float *in = &corners[corner * 4];
+        float  value[4];
+
+        for (int row = 0; row < 4; row++) {
+            value[row] = matrix[0][row] * in[0] + matrix[1][row] * in[1] + matrix[2][row] * in[2] +
+                         matrix[3][row] * in[3];
+        }
+
+        float scale = 1.0f / (value[3] < 0.0f ? -value[3] : value[3]);
+        value[0] *= scale;
+        value[1] *= scale;
+
+        for (int row = 0; row < 4; row++) {
+            if (corner == 0 || value[row] > hi[row]) {
+                hi[row] = value[row];
+            }
+            if (corner == 0 || value[row] < lo[row]) {
+                lo[row] = value[row];
+            }
+        }
+    }
+}
+#endif
+
 int mgInsideScreen(mgVu0FBOX *box) {
     sceVu0FMATRIX matrix;
     sceVu0FVECTOR corners[8];
@@ -354,6 +387,11 @@ int mgInsideScreen(float (*corners)[4], float (*matrix)[4], float *out_max, floa
 
     // Each corner goes through the screen transform and is divided through by the magnitude
     // of its w, with each division overlapped with the next corner's transform.
+#ifdef NONMATCHING
+    float combined[4][4];
+    mgMulMatrix(combined, (float (*)[4]) screen, (float (*)[4]) m);
+    ProjectCornersBox(in, combined, hi, lo);
+#else
     asm {
         lqc2    vf11, 0(screen)
         lqc2    vf12, 16(screen)
@@ -469,6 +507,7 @@ int mgInsideScreen(float (*corners)[4], float (*matrix)[4], float *out_max, floa
         sqc2    vf30, 0(hi)
         sqc2    vf31, 0(lo)
     }
+#endif
 
     return mgClipBoxW(out_max, out_min, render_info->screen_box_max, render_info->screen_box_min);
 }
@@ -840,6 +879,16 @@ void mgCFrame::GetLocalMatrix(float (*matrix)[4]) {
     if (use_srt) {
         float(*destination)[4] = matrix;
 
+#ifdef NONMATCHING
+        for (int row = 0; row < 3; row++) {
+            for (int axis = 0; axis < 4; axis++) {
+                destination[row][axis] = trans_matrix[row][axis] * scale[axis];
+            }
+        }
+        for (int axis = 0; axis < 4; axis++) {
+            destination[3][axis] = trans_matrix[3][axis];
+        }
+#else
         asm {
             addiu v1, this, 0xB0
             addiu v0, this, 0x30
@@ -857,6 +906,7 @@ void mgCFrame::GetLocalMatrix(float (*matrix)[4]) {
             sqc2 vf3, 32(destination)
             sqc2 vf4, 48(destination)
         }
+#endif
         sceVu0FVECTOR translation;
         if (rot_type & MG_FRAME_ROT_LOCAL_ORIGIN) {
             sceVu0CopyVector(translation, matrix[3]);
@@ -939,6 +989,13 @@ void mgCFrame::GetBBoardMatrix(int mode, float (*matrix)[4], mgRENDER_INFO *info
     }
 
     float *scale_vec = scale;
+#ifdef NONMATCHING
+    for (int row = 0; row < 3; row++) {
+        for (int axis = 0; axis < 4; axis++) {
+            matrix[row][axis] *= scale_vec[axis];
+        }
+    }
+#else
     asm {
         lqc2 vf10, 0(scale_vec)
         lqc2 vf1, 0x0(matrix)
@@ -954,6 +1011,7 @@ void mgCFrame::GetBBoardMatrix(int mode, float (*matrix)[4], mgRENDER_INFO *info
         sqc2 vf3, 0x20(matrix)
         sqc2 vf4, 0x30(matrix)
     }
+#endif
     matrix[3][0] = position[0];
     matrix[3][1] = position[1];
     matrix[3][2] = position[2];
@@ -1016,6 +1074,14 @@ void mgCFrame::GetLWMatrix(float (*matrix)[4]) {
         a = parent_matrix;
         b = local_matrix;
         dst = lw_matrix;
+#ifdef NONMATCHING
+        mgMulMatrix(dst, a, b);
+        for (int row = 0; row < 4; row++) {
+            for (int axis = 0; axis < 4; axis++) {
+                matrix[row][axis] = dst[row][axis];
+            }
+        }
+#else
         asm {
             lqc2 vf5, 0(b)
             lqc2 vf1, 0(a)
@@ -1050,6 +1116,7 @@ void mgCFrame::GetLWMatrix(float (*matrix)[4]) {
             sqc2 vf22, 0x20(matrix)
             sqc2 vf23, 0x30(matrix)
         }
+#endif
 
         changed = 0;
     }
@@ -1099,6 +1166,14 @@ void mgCFrame::GetLWMatrixTopBottom(float (*matrix)[4]) {
         a = parent_matrix;
         b = local_matrix;
         dst = lw_matrix;
+#ifdef NONMATCHING
+        mgMulMatrix(dst, a, b);
+        for (int row = 0; row < 4; row++) {
+            for (int axis = 0; axis < 4; axis++) {
+                matrix[row][axis] = dst[row][axis];
+            }
+        }
+#else
         asm {
             lqc2 vf5, 0(b)
             lqc2 vf1, 0(a)
@@ -1133,6 +1208,7 @@ void mgCFrame::GetLWMatrixTopBottom(float (*matrix)[4]) {
             sqc2 vf22, 0x20(matrix)
             sqc2 vf23, 0x30(matrix)
         }
+#endif
     }
 
     changed = 0;
@@ -1684,6 +1760,9 @@ int mgCFrame::GetDrawRect(mgVu0FBOX *rect, mgCDrawManager *manager) {
 
         // Each corner goes through the screen transform and is divided through by the magnitude
         // of its w, and the box around the results is kept.
+#ifdef NONMATCHING
+        ProjectCornersBox(corners, (float (*)[4]) matrix, hi, lo);
+#else
         asm {
             lqc2    vf10, 0(corners)
             lqc2    vf11, 16(corners)
@@ -1789,6 +1868,7 @@ int mgCFrame::GetDrawRect(mgVu0FBOX *rect, mgCDrawManager *manager) {
             sqc2    vf30, 0(hi)
             sqc2    vf31, 0(lo)
         }
+#endif
 
         // The box counts only when it overlaps the screen, whose coordinates are relative to its
         // centre, and does not lie behind the near plane; it is then moved to screen coordinates.

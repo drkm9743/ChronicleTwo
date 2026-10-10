@@ -220,10 +220,16 @@ int CCollisionMDT::PickUpNearPoly(CCPoly *out, const mgVu0FBOX &box, int max) {
     max_ptr = box_max;
     min_ptr = box_min;
 
+#ifdef NONMATCHING
+    // Retail loads the bounds into vf10 and vf11 here, but nothing reads them.
+    (void) max_ptr;
+    (void) min_ptr;
+#else
     asm {
         lqc2 vf10, 0(max_ptr)
         lqc2 vf11, 0(min_ptr)
     }
+#endif
     polygon = poly;
     for (; i < poly_count; i++, polygon++) {
         mgVectorMaxMin(poly_max, poly_min, polygon->vertex[0], polygon->vertex[1], polygon->vertex[2]);
@@ -286,6 +292,18 @@ int CColFrame::InsidePoint(float *point) {
  * Loads the matrix used to transform collision normals into VU0 registers.
  *
  */
+#ifdef NONMATCHING
+/** The matrix that retail leaves in VU0's vf10-vf13 for trance_normal. */
+static float trance_matrix[4][4];
+
+static void pre_trance_normal(float (*matrix)[4]) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            trance_matrix[i][j] = matrix[i][j];
+        }
+    }
+}
+#else
 static asm void pre_trance_normal(float (*matrix)[4]) {
     .set noreorder
     lqc2 vf10, 0(a0)
@@ -294,6 +312,7 @@ static asm void pre_trance_normal(float (*matrix)[4]) {
     jr ra
     lqc2 vf13, 0x30(a0)
 }
+#endif
 #pragma global_optimizer reset
 
 /**
@@ -303,6 +322,34 @@ static asm void pre_trance_normal(float (*matrix)[4]) {
  *
  */
 #pragma global_optimizer off
+#ifdef NONMATCHING
+static void trance_normal(float *v0, float *v1, float *v2, float *normal) {
+    float corners[3][4];
+    float *out[3] = {v0, v1, v2};
+
+    // Retail reads the three corners as consecutive vectors from v0.
+    for (int k = 0; k < 3; k++) {
+        for (int i = 0; i < 4; i++) {
+            corners[k][i] = trance_matrix[0][i] * v0[k * 4 + 0] + trance_matrix[1][i] * v0[k * 4 + 1] +
+                            trance_matrix[2][i] * v0[k * 4 + 2] + trance_matrix[3][i] * v0[k * 4 + 3];
+        }
+    }
+
+    for (int k = 0; k < 3; k++) {
+        for (int i = 0; i < 4; i++) {
+            out[k][i] = corners[k][i];
+        }
+    }
+
+    float edge1[3] = {corners[1][0] - corners[0][0], corners[1][1] - corners[0][1], corners[1][2] - corners[0][2]};
+    float edge2[3] = {corners[2][0] - corners[0][0], corners[2][1] - corners[0][1], corners[2][2] - corners[0][2]};
+    normal[0] = edge1[1] * edge2[2] - edge2[1] * edge1[2];
+    normal[1] = edge1[2] * edge2[0] - edge2[2] * edge1[0];
+    normal[2] = edge1[0] * edge2[1] - edge2[0] * edge1[1];
+    // Retail leaves whatever VU0 held in w.
+    normal[3] = 0.0f;
+}
+#else
 static asm void trance_normal(float *v0, float *v1, float *v2, float *normal) {
     .set noreorder
     lqc2 vf16, 0(a0)
@@ -331,6 +378,7 @@ static asm void trance_normal(float *v0, float *v1, float *v2, float *normal) {
     jr ra
     sqc2 vf22, 0(a3)
 }
+#endif
 #pragma global_optimizer reset
 #pragma force_active reset
 

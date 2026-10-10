@@ -292,7 +292,14 @@ public:
      * @address 0x28F800
      * @size 0xA0
      */
+#ifdef PLATFORM_PC
+    /* Retail overrides CObjectFrame::Draw, which returns int, with a void
+     * function; C++ needs the return types to agree, so the body is DrawBody. */
+    virtual int Draw();
+    void        DrawBody();
+#else
     virtual void Draw();
+#endif
 
     /**
      *

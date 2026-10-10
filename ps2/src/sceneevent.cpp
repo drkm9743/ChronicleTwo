@@ -295,9 +295,13 @@ void CScene::DrawSky(int sky_index) {
     float lighting_ratio[8];
     float sun_ratio[8];
 
+#ifdef PLATFORM_PC
+    PC_UNCONSTRUCTED(CMapLightingInfo, lighting);
+#else
     union {
         CMapLightingInfo lighting;
     };
+#endif
 
     float      sky_color_a[4];
     float      sky_color_b[4];

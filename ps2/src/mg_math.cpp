@@ -12,6 +12,13 @@ int         Check_Point_Poly3(float x, float y, float x0, float y0, float x1, fl
 static void MulMatrix3(float (*matrix)[4], float (*second)[4], float (*third)[4]);
 
 // Code (.text)
+#ifdef NONMATCHING
+void mgFotI4(int *out, float *in) {
+    for (int i = 0; i < 4; i++) {
+        out[i] = (int) (in[i] * 16.0f);
+    }
+}
+#else
 asm void mgFotI4(int *out, float *in) {
     .set noreorder
     lqc2 vf1, 0x0(a1)
@@ -19,6 +26,22 @@ asm void mgFotI4(int *out, float *in) {
     jr ra
     sqc2 vf1, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgCreateBox8(float (*corners)[4], float *max, float *min) {
+    static const int kCornerMax[8][3] = {
+        {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}, {0, 0, 1}, {1, 0, 1}, {0, 1, 1}, {1, 1, 1},
+    };
+
+    for (int i = 0; i < 8; i++) {
+        for (int axis = 0; axis < 3; axis++) {
+            corners[i][axis] = kCornerMax[i][axis] ? max[axis] : min[axis];
+        }
+        // Retail copies w along with the corner that sets the most axes.
+        corners[i][3] = kCornerMax[i][0] + kCornerMax[i][1] + kCornerMax[i][2] >= 2 ? max[3] : min[3];
+    }
+}
+#else
 asm void mgCreateBox8(float (*corners)[4], float *max, float *min) {
     .set noreorder
     lqc2 vf1, 0x0(a1)
@@ -45,16 +68,40 @@ asm void mgCreateBox8(float (*corners)[4], float *max, float *min) {
     jr ra
     sqc2 vf8, 0x30(a0)
 }
+#endif
 
 void mgZeroVector(float *vector) {
     *reinterpret_cast<u_long128 *>(vector) = 0;
 }
 
+#ifdef NONMATCHING
+void mgZeroVectorW(float *vector) {
+    vector[0] = 0.0f;
+    vector[1] = 0.0f;
+    vector[2] = 0.0f;
+    vector[3] = 1.0f;
+}
+#else
 asm void mgZeroVectorW(float *vector) {
     .set noreorder
     jr ra
     sqc2 vf0, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+int mgClipBoxVertex(float *point, float *max, float *min) {
+    if (max[0] - point[0] < 0.0f ||
+        point[0] - min[0] < 0.0f ||
+        max[1] - point[1] < 0.0f ||
+        point[1] - min[1] < 0.0f ||
+        max[2] - point[2] < 0.0f ||
+        point[2] - min[2] < 0.0f) {
+        return 0;
+    }
+
+    return 1;
+}
+#else
 asm int mgClipBoxVertex(float *point, float *max, float *min) {
     .set noreorder
     lqc2 vf1, 0x0(a0)
@@ -74,6 +121,21 @@ asm int mgClipBoxVertex(float *point, float *max, float *min) {
     jr ra
     sltiu v0, v0, 0x1
 }
+#endif
+#ifdef NONMATCHING
+int mgClipBox(float *max0, float *min0, float *max1, float *min1) {
+    if (max0[0] - min1[0] < 0.0f ||
+        max1[0] - min0[0] < 0.0f ||
+        max0[1] - min1[1] < 0.0f ||
+        max1[1] - min0[1] < 0.0f ||
+        max0[2] - min1[2] < 0.0f ||
+        max1[2] - min0[2] < 0.0f) {
+        return 0;
+    }
+
+    return 1;
+}
+#else
 asm int mgClipBox(float *max0, float *min0, float *max1, float *min1) {
     .set noreorder
     lqc2 vf10, 0x0(a0)
@@ -94,6 +156,21 @@ asm int mgClipBox(float *max0, float *min0, float *max1, float *min1) {
     jr ra
     sltiu v0, v0, 0x1
 }
+#endif
+#ifdef NONMATCHING
+int mgClipBoxW(float *max0, float *min0, float *max1, float *min1) {
+    if (max0[0] - min1[0] < 0.0f ||
+        max1[0] - min0[0] < 0.0f ||
+        max0[1] - min1[1] < 0.0f ||
+        max1[1] - min0[1] < 0.0f ||
+        max0[3] - min1[3] < 0.0f ||
+        max1[3] - min0[3] < 0.0f) {
+        return 0;
+    }
+
+    return 1;
+}
+#else
 asm int mgClipBoxW(float *max0, float *min0, float *max1, float *min1) {
     .set noreorder
     lqc2 vf10, 0x0(a0)
@@ -114,6 +191,21 @@ asm int mgClipBoxW(float *max0, float *min0, float *max1, float *min1) {
     jr ra
     sltiu v0, v0, 0x1
 }
+#endif
+#ifdef NONMATCHING
+int mgClipInBox(float *max0, float *min0, float *max1, float *min1) {
+    if (max1[0] - max0[0] < 0.0f ||
+        min0[0] - min1[0] < 0.0f ||
+        max1[1] - max0[1] < 0.0f ||
+        min0[1] - min1[1] < 0.0f ||
+        max1[2] - max0[2] < 0.0f ||
+        min0[2] - min1[2] < 0.0f) {
+        return 0;
+    }
+
+    return 1;
+}
+#else
 asm int mgClipInBox(float *max0, float *min0, float *max1, float *min1) {
     .set noreorder
     lqc2 vf10, 0x0(a0)
@@ -134,6 +226,7 @@ asm int mgClipInBox(float *max0, float *min0, float *max1, float *min1) {
     jr ra
     sltiu v0, v0, 0x1
 }
+#endif
 #ifdef NONMATCHING
 int mgClipInBoxW(float *max0, float *min0, float *max1, float *min1) {
     for (int axis = 0; axis < 3; ++axis) {
@@ -166,6 +259,13 @@ asm int mgClipInBoxW(float *max0, float *min0, float *max1, float *min1) {
     sltiu v0, v0, 0x1
 }
 #endif
+#ifdef NONMATCHING
+void mgAddVector(float *vector, float *add) {
+    for (int i = 0; i < 4; i++) {
+        vector[i] += add[i];
+    }
+}
+#else
 asm void mgAddVector(float *vector, float *add) {
     .set noreorder
     lqc2 vf15, 0x0(a0)
@@ -174,6 +274,14 @@ asm void mgAddVector(float *vector, float *add) {
     jr ra
     sqc2 vf15, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgSubVector(float *vector, float *sub) {
+    for (int i = 0; i < 4; i++) {
+        vector[i] -= sub[i];
+    }
+}
+#else
 asm void mgSubVector(float *vector, float *sub) {
     .set noreorder
     lqc2 vf15, 0x0(a0)
@@ -182,6 +290,7 @@ asm void mgSubVector(float *vector, float *sub) {
     jr ra
     sqc2 vf15, 0x0(a0)
 }
+#endif
 
 void mgNormalizeVector(float *out, float *in, float length) {
     sceVu0FVECTOR unit;
@@ -190,6 +299,13 @@ void mgNormalizeVector(float *out, float *in, float length) {
     sceVu0ScaleVector(out, unit, length);
 }
 
+#ifdef NONMATCHING
+void mgVectorMin(float *min, float *a, float *b) {
+    for (int i = 0; i < 4; i++) {
+        min[i] = b[i] < a[i] ? b[i] : a[i];
+    }
+}
+#else
 asm void mgVectorMin(float *min, float *a, float *b) {
     .set noreorder
     lqc2 vf15, 0x0(a1)
@@ -198,6 +314,16 @@ asm void mgVectorMin(float *min, float *a, float *b) {
     jr ra
     sqc2 vf18, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgVectorMin(float *min, float *a, float *b, float *c, float *d) {
+    for (int i = 0; i < 4; i++) {
+        float value = b[i] < a[i] ? b[i] : a[i];
+        value = c[i] < value ? c[i] : value;
+        min[i] = d[i] < value ? d[i] : value;
+    }
+}
+#else
 asm void mgVectorMin(float *min, float *a, float *b, float *c, float *d) {
     .set noreorder
     lqc2 vf15, 0x0(a1)
@@ -210,6 +336,17 @@ asm void mgVectorMin(float *min, float *a, float *b, float *c, float *d) {
     jr ra
     sqc2 vf20, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgVectorMaxMin(float *max, float *min, float *a, float *b) {
+    for (int i = 0; i < 4; i++) {
+        float high = b[i] > a[i] ? b[i] : a[i];
+        float low = b[i] < a[i] ? b[i] : a[i];
+        max[i] = high;
+        min[i] = low;
+    }
+}
+#else
 asm void mgVectorMaxMin(float *max, float *min, float *a, float *b) {
     .set noreorder
     lqc2 vf15, 0x0(a2)
@@ -220,6 +357,19 @@ asm void mgVectorMaxMin(float *max, float *min, float *a, float *b) {
     jr ra
     sqc2 vf20, 0x0(a1)
 }
+#endif
+#ifdef NONMATCHING
+void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c) {
+    for (int i = 0; i < 4; i++) {
+        float high = b[i] > a[i] ? b[i] : a[i];
+        float low = b[i] < a[i] ? b[i] : a[i];
+        high = c[i] > high ? c[i] : high;
+        low = c[i] < low ? c[i] : low;
+        max[i] = high;
+        min[i] = low;
+    }
+}
+#else
 asm void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c) {
     .set noreorder
     lqc2 vf15, 0x0(a2)
@@ -233,6 +383,21 @@ asm void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c) {
     jr ra
     sqc2 vf21, 0x0(a1)
 }
+#endif
+#ifdef NONMATCHING
+void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c, float *d) {
+    for (int i = 0; i < 4; i++) {
+        float high = b[i] > a[i] ? b[i] : a[i];
+        float low = b[i] < a[i] ? b[i] : a[i];
+        high = c[i] > high ? c[i] : high;
+        low = c[i] < low ? c[i] : low;
+        high = d[i] > high ? d[i] : high;
+        low = d[i] < low ? d[i] : low;
+        max[i] = high;
+        min[i] = low;
+    }
+}
+#else
 asm void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c, float *d) {
     .set noreorder
     lqc2 vf15, 0x0(a2)
@@ -249,6 +414,21 @@ asm void mgVectorMaxMin(float *max, float *min, float *a, float *b, float *c, fl
     jr ra
     sqc2 vf21, 0x0(a1)
 }
+#endif
+#ifdef NONMATCHING
+void mgBoxMaxMin(mgVu0FBOX *box, mgVu0FBOX *other) {
+    for (int i = 0; i < 4; i++) {
+        float high = box->min[i] > box->max[i] ? box->min[i] : box->max[i];
+        float low = box->min[i] < box->max[i] ? box->min[i] : box->max[i];
+        high = other->max[i] > high ? other->max[i] : high;
+        low = other->max[i] < low ? other->max[i] : low;
+        high = other->min[i] > high ? other->min[i] : high;
+        low = other->min[i] < low ? other->min[i] : low;
+        box->max[i] = high;
+        box->min[i] = low;
+    }
+}
+#else
 asm void mgBoxMaxMin(mgVu0FBOX *box, mgVu0FBOX *other) {
     .set noreorder
     lqc2 vf15, 0x0(a0)
@@ -265,6 +445,19 @@ asm void mgBoxMaxMin(mgVu0FBOX *box, mgVu0FBOX *other) {
     jr ra
     sqc2 vf21, 0x10(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgPlaneNormal(float *normal, float *v0, float *v1, float *v2) {
+    float edge1[3] = {v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]};
+    float edge2[3] = {v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]};
+
+    normal[0] = edge1[1] * edge2[2] - edge2[1] * edge1[2];
+    normal[1] = edge1[2] * edge2[0] - edge2[2] * edge1[0];
+    normal[2] = edge1[0] * edge2[1] - edge2[0] * edge1[1];
+    // Retail leaves whatever VU0 held in w; the PC build writes 0.
+    normal[3] = 0.0f;
+}
+#else
 asm void mgPlaneNormal(float *normal, float *v0, float *v1, float *v2) {
     .set noreorder
     lqc2 vf15, 0x0(a1)
@@ -277,6 +470,7 @@ asm void mgPlaneNormal(float *normal, float *v0, float *v1, float *v2) {
     jr ra
     sqc2 vf12, 0x0(a0)
 }
+#endif
 
 float mgDistPlanePoint(float *normal, float *on_plane, float *point) {
     sceVu0FVECTOR offset;
@@ -536,6 +730,15 @@ int Check_Point_Poly3(float x, float y, float x0, float y0, float x1, float y1, 
     return MG_POINT_POLY3_OUTSIDE;
 }
 
+#ifdef NONMATCHING
+float mgDistVector(float *vector) {
+    float x = vector[0];
+    float y = vector[1];
+    float z = vector[2];
+
+    return sqrtf(x * x + y * y + z * z);
+}
+#else
 asm float mgDistVector(float *vector) {
     .set noreorder
     lqc2 vf4, 0x0(a0)
@@ -551,6 +754,15 @@ asm float mgDistVector(float *vector) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVectorXZ(float *vector) {
+    float x = vector[0];
+    float z = vector[2];
+
+    return sqrtf(x * x + z * z);
+}
+#else
 asm float mgDistVectorXZ(float *vector) {
     .set noreorder
     lqc2 vf4, 0x0(a0)
@@ -565,6 +777,16 @@ asm float mgDistVectorXZ(float *vector) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVector2(float *vector) {
+    float x = vector[0];
+    float y = vector[1];
+    float z = vector[2];
+
+    return x * x + y * y + z * z;
+}
+#else
 asm float mgDistVector2(float *vector) {
     .set noreorder
     lqc2 vf4, 0x0(a0)
@@ -578,6 +800,16 @@ asm float mgDistVector2(float *vector) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVector(float *a, float *b) {
+    float x = b[0] - a[0];
+    float y = b[1] - a[1];
+    float z = b[2] - a[2];
+
+    return sqrtf(x * x + y * y + z * z);
+}
+#else
 asm float mgDistVector(float *a, float *b) {
     .set noreorder
     lqc2 vf2, 0x0(a0)
@@ -595,6 +827,15 @@ asm float mgDistVector(float *a, float *b) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVectorXZ(float *a, float *b) {
+    float x = b[0] - a[0];
+    float z = b[2] - a[2];
+
+    return sqrtf(x * x + z * z);
+}
+#else
 asm float mgDistVectorXZ(float *a, float *b) {
     .set noreorder
     lqc2 vf2, 0x0(a0)
@@ -611,6 +852,16 @@ asm float mgDistVectorXZ(float *a, float *b) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVector2(float *a, float *b) {
+    float x = b[0] - a[0];
+    float y = b[1] - a[1];
+    float z = b[2] - a[2];
+
+    return x * x + y * y + z * z;
+}
+#else
 asm float mgDistVector2(float *a, float *b) {
     .set noreorder
     lqc2 vf2, 0x0(a0)
@@ -626,6 +877,15 @@ asm float mgDistVector2(float *a, float *b) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+float mgDistVectorXZ2(float *a, float *b) {
+    float x = b[0] - a[0];
+    float z = b[2] - a[2];
+
+    return x * x + z * z;
+}
+#else
 asm float mgDistVectorXZ2(float *a, float *b) {
     .set noreorder
     lqc2 vf2, 0x0(a0)
@@ -640,6 +900,16 @@ asm float mgDistVectorXZ2(float *a, float *b) {
     jr ra
     nop
 }
+#endif
+#ifdef NONMATCHING
+void mgUnitMatrix(float (*matrix)[4]) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            matrix[i][j] = i == j ? 1.0f : 0.0f;
+        }
+    }
+}
+#else
 asm void mgUnitMatrix(float (*matrix)[4]) {
     .set noreorder
     vmr32.xyzw vf1, vf0
@@ -651,6 +921,16 @@ asm void mgUnitMatrix(float (*matrix)[4]) {
     jr ra
     sqc2 vf3, 0x0(a0)
 }
+#endif
+#ifdef NONMATCHING
+void mgZeroMatrix(float (*matrix)[4]) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            matrix[i][j] = 0.0f;
+        }
+    }
+}
+#else
 asm void mgZeroMatrix(float (*matrix)[4]) {
     .set noreorder
     vsub.xyzw vf1, vf1, vf1
@@ -660,6 +940,7 @@ asm void mgZeroMatrix(float (*matrix)[4]) {
     jr ra
     sqc2 vf1, 0x0(a0)
 }
+#endif
 /**
  *
  * Multiplies a matrix in place by two further matrices.
@@ -730,9 +1011,10 @@ void mgMulMatrix(float (*product)[4], float (*left_matrix)[4], float (*right_mat
     float result[4][4];
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
+            // Row i of the product combines the rows of left_matrix by row i of right_matrix.
             result[i][j] = 0.0f;
             for (int k = 0; k < 4; ++k) {
-                result[i][j] += left_matrix[i][k] * right_matrix[k][j];
+                result[i][j] += right_matrix[i][k] * left_matrix[k][j];
             }
         }
     }

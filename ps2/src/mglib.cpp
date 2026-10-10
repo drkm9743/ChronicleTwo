@@ -378,10 +378,12 @@ int VSyncCallBack(int field) {
 
     call_back_active = 0;
 
+#ifndef PLATFORM_PC
     asm {
         sync
         ei
     }
+#endif
 
     return 0;
 }

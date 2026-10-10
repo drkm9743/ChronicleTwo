@@ -243,21 +243,33 @@ void mgCDrawPrim::End2() {
 void mgCDrawPrim::Data0(float *data) {
     u_long128 *destination = write;
     write++;
+#ifdef NONMATCHING
+    for (int i = 0; i < 4; i++) {
+        ((int *) destination)[i] = (int) data[i];
+    }
+#else
     asm {
         lqc2 vf1, 0(data)
         vftoi0.xyzw vf1, vf1
         sqc2 vf1, 0(destination)
     }
+#endif
 }
 
 void mgCDrawPrim::Data4(float *data) {
     u_long128 *destination = write;
     write++;
+#ifdef NONMATCHING
+    for (int i = 0; i < 4; i++) {
+        ((int *) destination)[i] = (int) (data[i] * 16.0f);
+    }
+#else
     asm {
         lqc2 vf1, 0(data)
         vftoi4.xyzw vf1, vf1
         sqc2 vf1, 0(destination)
     }
+#endif
 }
 
 void mgCDrawPrim::Data(int *data) {
@@ -288,12 +300,19 @@ void mgCDrawPrim::Vertex(float x, float y, float z) {
 void mgCDrawPrim::Vertex(float *pos) {
     int  converted[4] __attribute__((aligned(16)));
     int *result = converted;
+#ifdef NONMATCHING
+    result[0] = (int) (pos[0] * 16.0f);
+    result[1] = (int) (pos[1] * 16.0f);
+    result[2] = (int) pos[2];
+    result[3] = 0;
+#else
     asm {
         lqc2 vf10, 0(pos)
         vftoi4.xy vf10, vf10
         vftoi0.z vf10, vf10
         sqc2 vf10, 0(result)
     }
+#endif
     Vertex4(converted[0], converted[1], converted[2]);
 }
 
@@ -326,11 +345,17 @@ void mgCDrawPrim::Color(int r, int g, int b, int a) {
 void mgCDrawPrim::Color(float *color) {
     int  converted[4] __attribute__((aligned(16)));
     int *result = converted;
+#ifdef NONMATCHING
+    for (int i = 0; i < 4; i++) {
+        result[i] = (int) color[i];
+    }
+#else
     asm {
         lqc2 vf10, 0(color)
         vftoi0.xyzw vf10, vf10
         sqc2 vf10, 0(result)
     }
+#endif
     Color(converted[0], converted[1], converted[2], converted[3]);
 }
 

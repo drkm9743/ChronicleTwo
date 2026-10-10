@@ -1534,7 +1534,8 @@ int PauseMenu() {
                 PauseSel = 0;
             }
 
-            int selected = PauseSel;
+            int selected;
+            selected = PauseSel;
 
             if (PauseMes.select < 0) {
                 PauseMes.cursor_time = 0;

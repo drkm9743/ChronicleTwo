@@ -32,6 +32,16 @@ static const int   kChildIdMax = 0x200;
  *
  */
 static void PlaneNormalXZ(float *normal, float *p0, float *p1, float *p2) {
+#ifdef NONMATCHING
+    // The cross product of the two edges flattened onto the XZ plane.
+    float edge1[3] = {p1[0] - p0[0], 0.0f, p1[2] - p0[2]};
+    float edge2[3] = {p2[0] - p0[0], 0.0f, p2[2] - p0[2]};
+    normal[0] = edge1[1] * edge2[2] - edge2[1] * edge1[2];
+    normal[1] = edge1[2] * edge2[0] - edge2[2] * edge1[0];
+    normal[2] = edge1[0] * edge2[1] - edge2[0] * edge1[1];
+    // Retail leaves whatever VU0 held in w.
+    normal[3] = 0.0f;
+#else
     asm {
         lqc2 vf15, 0(p0)
         vsub.xyzw vf10, vf10, vf10
@@ -44,6 +54,7 @@ static void PlaneNormalXZ(float *normal, float *p0, float *p1, float *p2) {
         vopmsub.xyz vf12, vf11, vf10
         sqc2 vf12, 0(normal)
     }
+#endif
 }
 
 float CEditMap::GetEditPartsAlt(CEditPartsInfo *info, sceVu0FVECTOR pos, float rot_y, CEditParts **parts, int num) {

@@ -1074,9 +1074,13 @@ int sgLoopGyoRace(SubGameInfo *info) {
             scene->SetActive(SCENE_DATA_CHARA, 0);
             scene->active_camera = scene->before_camera;
 
+#ifdef PLATFORM_PC
+            PC_UNCONSTRUCTED(CSceneEventData, data);
+#else
             union {
                 CSceneEventData data;
             };
+#endif
 
             memset(&data, 0, sizeof(data));
             if (OmakeFlag != 0) {

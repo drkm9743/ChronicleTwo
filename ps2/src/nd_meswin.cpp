@@ -4482,8 +4482,10 @@ void ClsMes::DrawMesWin() {
         case MES_WIN_VERSATILE_3:
             CalcRectScale(shadow, fade, &versatile_3_scaled);
             select_y = inner.y + font_h * select_top + 7;
-            int half = versatile_3_scaled.height / 2;
-            int diff = select_y - ((int) versatile_3_scaled.y + (int) half);
+            int half;
+            half = versatile_3_scaled.height / 2;
+            int diff;
+            diff = select_y - ((int) versatile_3_scaled.y + (int) half);
             select_y = (int) (diff * fade);
             select_y = select_y + versatile_3_scaled.y + (int) half;
             versatile_3_scaled.x = (int) (versatile_3_scaled.x + draw_off_x);

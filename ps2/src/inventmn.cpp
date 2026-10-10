@@ -3137,7 +3137,8 @@ int CMenuInvent::IsCreateObject(int mode, int keys) {
             break;
         case kCreateShowReady:
             action_chara->GetNowMotionName();
-            s32 motion = action_chara->seq_state;
+            s32 motion;
+            motion = action_chara->seq_state;
 
             if (this->create_load_state >= 5 && motion == 3) {
                 this->step++;
@@ -6358,7 +6359,8 @@ int MenuInventInit(mgCMemory *memory, int *tex_block, int arg) {
             MenuMainFrameModeSet(1, 1);
             ReturnMenuIntern(1);
             MenuMesForm[0]->draw_flag = 0;
-            CMenuPosDataForm *image_form = MenuPosData->GetFormInfo("mainpureimage");
+            CMenuPosDataForm *image_form;
+            image_form = MenuPosData->GetFormInfo("mainpureimage");
 
             if (image_form != NULL) {
                 image_form->draw_flag = 1;

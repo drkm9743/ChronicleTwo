@@ -268,6 +268,28 @@ public:
      */
     CFuncPoint() {}
 
+#ifdef PLATFORM_PC
+    /* mgVu0FBOX in the union has its own assignment operator, so C++11 deletes
+     * the implicit one; this copies the members the way the implicit one does,
+     * the union as raw bytes. */
+    CFuncPoint &operator=(CFuncPoint &other) {
+        name = other.name;
+        type = other.type;
+        unk_8 = other.unk_8;
+        flag_no = other.flag_no;
+        enable = other.enable;
+        start = other.start;
+        end = other.end;
+        __builtin_memcpy(data, other.data, (char *) &frame - (char *) data);
+        frame = other.frame;
+        __builtin_memcpy(position, other.position, sizeof(position));
+        __builtin_memcpy(rotation, other.rotation, sizeof(rotation));
+        __builtin_memcpy(scale, other.scale, sizeof(scale));
+        active = other.active;
+        return *this;
+    }
+#endif
+
     /**
      *
      * Resets the point to an enabled, all-day point at the origin with no settings.

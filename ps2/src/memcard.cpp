@@ -436,7 +436,7 @@ int CMemoryCardManager::CheckDataFileNum() {
     return count;
 }
 
-u32 CMemoryCardManager::CheckOmake(unsigned long *out_mask) {
+u32 CMemoryCardManager::CheckOmake(u_long *out_mask) {
     int flags = 0;
     u64 mask = 0;
 

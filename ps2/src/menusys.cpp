@@ -1978,7 +1978,8 @@ int CBaseMenuClass::IsSpectolFusion(int key, int command) {
 
     switch (step) {
         case 0:
-            int choice = message->YesNoCursor();
+            int choice;
+            choice = message->YesNoCursor();
 
             switch (command) {
                 case 1:
@@ -8766,9 +8767,19 @@ static void MenuItemDebugDraw() {
             font->SetStr("\x20\x44\x65\x66\x44\x6F\x77\x6E\x20\x20\x20\x3A\x20\x81\x7E");
             font->SetPos(236, 180);
             font->DrawDirect(font->str, font->pos_x, font->pos_y);
-            int  attribute = MenuUserDataManPtr->GetCharaStatusAttirbute(CMenuItemInfoPt->sub_view);
+            int attribute;
+            attribute = MenuUserDataManPtr->GetCharaStatusAttirbute(CMenuItemInfoPt->sub_view);
+#ifdef PLATFORM_PC
+            /* Clang rejects jumping past an initialised array; later cases
+             * still use this case's locals, so the case keeps no braces. */
+            char status[0x100];
+            __builtin_memset(status, 0, sizeof(status));
+            __builtin_strcpy(status, "Status : ");
+#else
             char status[0x100] = "Status : ";
-            int  count = 0;
+#endif
+            int count;
+            count = 0;
             int  i;
 
             for (i = 0; i < 6; i++) {

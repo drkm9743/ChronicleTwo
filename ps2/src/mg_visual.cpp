@@ -106,11 +106,18 @@ u_int *GetScrPad() {
 void SendDMA(void *packet, int size) {
     int address_mask = 0x0FFFFFFF;
 
+#ifdef PLATFORM_PC
+    // The mask turns an EE address into a physical one for the DMA controller;
+    // a PC pointer is kept as it is.
+    (void) address_mask;
+#else
     asm {
         and packet, packet, address_mask
     }
+#endif
 
     if (start_dma) {
+#ifndef PLATFORM_PC
         asm {
             .set noreorder
         wait_dma:
@@ -124,6 +131,7 @@ void SendDMA(void *packet, int size) {
             nop
             nop
         }
+#endif
 
         start_dma = 0;
     }
@@ -216,7 +224,11 @@ int mgCVisualMDT::SetMaterialRef(u_long128 *packet, mgMaterial *material, int fl
         packet[3] = 0;
         packet[4] = 3;
         packet[5] = *(u_long128 *) &mat_vif_d_tex;
+#ifdef PLATFORM_PC
+        packet[6] = (u_long128) 0x000000000000086EULL << 64 | 0x3000000000008001ULL;
+#else
         packet[6] = 0x000000000000086E3000000000008001;
+#endif
         *(u_long *) &packet[7] = *(u_long *) &texture->tex1;
         ((u_long *) &packet[7])[1] = SCE_GS_TEX1_1;
         *(u_long *) &packet[8] = texture->tex0.value;
@@ -227,7 +239,11 @@ int mgCVisualMDT::SetMaterialRef(u_long128 *packet, mgMaterial *material, int fl
         packet[0] = *(u_long128 *) &mat_vif_dif;
         packet[1] = *(u_long128 *) material->diffuse;
         packet[2] = *(u_long128 *) &mat_vif_d_tex;
+#ifdef PLATFORM_PC
+        packet[3] = (u_long128) 0x000000000000086EULL << 64 | 0x3000000000008001ULL;
+#else
         packet[3] = 0x000000000000086E3000000000008001;
+#endif
         *(u_long *) &packet[4] = *(u_long *) &texture->tex1;
         ((u_long *) &packet[4])[1] = SCE_GS_TEX1_1;
         *(u_long *) &packet[5] = texture->tex0.value;

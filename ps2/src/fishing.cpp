@@ -2208,7 +2208,12 @@ static void CharaControl(CScene *scene, CPadControl *pad) {
                 float event_pos[4];
                 chara->GetPosition(event_pos);
 
+#ifdef PLATFORM_PC
+                union EventData {
+                    EventData() {}
+#else
                 union {
+#endif
                     CSceneEventData data;
 
                     struct {

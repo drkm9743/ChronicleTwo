@@ -22,6 +22,12 @@ struct CollisionRow {
 // Code (.text)
 int ClipBoxXZ(float *max_a, float *min_a, float *max_b, float *min_b) {
     int flags;
+#ifdef NONMATCHING
+    flags = max_a[0] - min_b[0] < 0.0f || max_a[2] - min_b[2] < 0.0f || max_b[0] - min_a[0] < 0.0f ||
+                    max_b[2] - min_a[2] < 0.0f
+                ? 0x80
+                : 0;
+#else
     asm {
         lqc2 vf10, 0(max_a)
         lqc2 vf11, 0(min_a)
@@ -40,6 +46,7 @@ int ClipBoxXZ(float *max_a, float *min_a, float *max_b, float *min_b) {
         vnop
         cfc2.ni flags, vi16
     }
+#endif
     return (flags & 0x80) == 0;
 }
 

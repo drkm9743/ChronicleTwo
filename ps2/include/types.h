@@ -29,11 +29,19 @@ typedef unsigned char u_char;
 typedef unsigned short u_short;
 /** SDK spelling for an unsigned word. */
 typedef unsigned int u_int;
-/** SDK spelling for an unsigned long. */
+/** SDK spelling for an unsigned long, a doubleword on the Emotion Engine. */
+#ifdef PLATFORM_PC
+typedef unsigned long long u_long;
+#else
 typedef unsigned long u_long;
+#endif
 /** SDK spelling for an unsigned quadword. */
 typedef unsigned __int128 u_long128;
 
 /** Size of an object in bytes on the PlayStation 2 target. */
+#ifdef PLATFORM_PC
+typedef __SIZE_TYPE__ size_t;
+#else
 typedef unsigned int size_t;
+#endif
 #define NULL 0

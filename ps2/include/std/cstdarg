@@ -3,4 +3,11 @@
 /* Declarations only. MWCC's variable-argument cursor is a byte pointer into
  * the caller's argument area. */
 
+#ifdef PLATFORM_PC
+typedef __builtin_va_list va_list;
+#define va_start(args, last) __builtin_va_start(args, last)
+#define va_arg(args, type) __builtin_va_arg(args, type)
+#define va_end(args) __builtin_va_end(args)
+#else
 typedef char *va_list;
+#endif

@@ -4514,9 +4514,12 @@ int MenuGeoramaPlacePush(CMenuGeorama *menu, int buttons_held, int buttons_press
 
     switch (menu->sub_step) {
         case 0:
-            int key = georama_menu_local_key(buttons_held);
-            int prev_selected = menu->select;
-            int prev_top = menu->top;
+            int key;
+            key = georama_menu_local_key(buttons_held);
+            int prev_selected;
+            prev_selected = menu->select;
+            int prev_top;
+            prev_top = menu->top;
             MenuKeySelectCheck(key, &menu->select, &menu->top, 0,
                                menu->GetNowViewModeMax(1), 8, (int) MENU_CURSOR_LIMIT_CLAMP);
             menu->SetGeoListInfo(menu->view_mode, menu->select, menu->top);
@@ -4604,8 +4607,10 @@ int MenuGeoramaPlacePush(CMenuGeorama *menu, int buttons_held, int buttons_press
             break;
         case 1:
             msg->AddMsgCursor2(0, 1, 1);
-            int cursor = msg->GetMsgCursor();
-            int flags = edparts_info->attr;
+            int cursor;
+            cursor = msg->GetMsgCursor();
+            int flags;
+            flags = edparts_info->attr;
 
             if (cursor == 1 && !(flags & kPlaceHidden)) {
                 int old_num = DestroyNum_3583;
@@ -4722,7 +4727,8 @@ int MenuGeoramaPlacePush(CMenuGeorama *menu, int buttons_held, int buttons_press
 
             break;
         case 2:
-            int choice = msg->YesNoCursor2(0);
+            int choice;
+            choice = msg->YesNoCursor2(0);
 
             if (choice == 1) {
                 GetSaveData()->AddBuildPartsNum(edparts_info->id, -DestroyNum_3583);

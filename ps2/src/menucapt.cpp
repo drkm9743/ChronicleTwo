@@ -99,9 +99,13 @@ void MenuChapterInit(mgCMemory *stack, int *tex_block, int open_type, int chapte
     };
     char image_path[96];
 
+#ifdef PLATFORM_PC
+    PC_UNCONSTRUCTED(mgCMemory, sound_memory);
+#else
     union {
         mgCMemory sound_memory;
     };
+#endif
 
     char       voice_path[140];
     u_int      file_size;

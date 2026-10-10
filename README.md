@@ -27,3 +27,22 @@ and `-DSATANSFIDDLE_CONFIG=/absolute/path/profile.json`; these cached settings
 take precedence over later environment changes. MWLD still runs under plain `wibo`.
 See [the compiler integration notes](scripts/build/SATANSFIDDLE.md) for the wrapper,
 selectors, and validation commands.
+
+# Building for Windows (in progress)
+
+`PLATFORM=WIN64` compiles the same game sources for 64-bit Windows with Clang
+(clang-cl, or clang++ targeting `x86_64-pc-windows-msvc`); MSVC's own `cl` does
+not accept them. It needs no disc image:
+
+```
+cmake -S . -B build/win64 -G Ninja -DPLATFORM=WIN64 -DCMAKE_CXX_COMPILER=clang-cl
+cmake --build build/win64
+```
+
+So far this builds every game unit into a static library. The PS2 SDK and the
+Metrowerks runtime the game calls are not implemented for Windows yet, so
+nothing links against it. The sources see `PLATFORM_PC` and `NONMATCHING`,
+which MWCC never defines: PC-only code sits behind `#ifdef PLATFORM_PC`, and
+the C versions of the VU0 assembly behind `#ifdef NONMATCHING`, so the PS2
+build's objects stay byte-identical. `-DPC_LAYOUT_ASSERTS=ON` checks the PS2
+structure sizes as well; with 8-byte pointers many of them differ.

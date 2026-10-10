@@ -819,7 +819,16 @@ void CDamageScore2::Step() {
     }
 }
 
+#ifdef PLATFORM_PC
+int CLockOnModel::Draw() {
+    DrawBody();
+    return 0;
+}
+
+void CLockOnModel::DrawBody() {
+#else
 void CLockOnModel::Draw() {
+#endif
     float target_pos[4];
     int   top_left[4];
     int   bottom_right[4];

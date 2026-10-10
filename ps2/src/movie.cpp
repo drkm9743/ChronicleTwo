@@ -671,10 +671,12 @@ int vblankHandler(int irq) {
         if (tag == NULL) {
             frd++;
 
+#ifndef PLATFORM_PC
             asm {
                 sync
                 ei
             }
+#endif
 
             return 0;
         } else {
@@ -690,10 +692,12 @@ int vblankHandler(int irq) {
             Cb ^= 1;
         }
     }
+#ifndef PLATFORM_PC
     asm {
         sync
         ei
     }
+#endif
     return 0;
 }
 
@@ -705,10 +709,12 @@ int handler_endimage(int irq) {
         isFrameEnd = 0;
     }
 
+#ifndef PLATFORM_PC
     asm {
         sync
         ei
     }
+#endif
 
     return 0;
 }

@@ -38,10 +38,12 @@ static int VSyncCallBack(int event) {
         vcount = 0;
     }
 
+#ifndef PLATFORM_PC
     asm {
         sync
         ei
     }
+#endif
 
     return 0;
 }

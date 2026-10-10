@@ -381,7 +381,8 @@ void CEffect::Step(int steps) {
 
                 break;
             case EFFECT_CHANGE_ADD_HEAD_TAIL:
-                int total = param.life;
+                int total;
+                total = param.life;
                 life = total;
 
                 if (life > 0.0f) {
