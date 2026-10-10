@@ -73,6 +73,8 @@ public:
 
     /** XGKICK: sends the GIF packet at data-memory quadword `addr` down PATH1. */
     void Kick(uint32_t addr);
+    /** XGKICK from a program that works on its own copy of data memory. */
+    void Kick(const uint32_t (*mem)[4], uint32_t addr);
 
     /** Addresses MSCAL reached with nothing to run, for diagnostics. */
     const std::vector<uint32_t> &Unhandled() const { return unhandled_; }

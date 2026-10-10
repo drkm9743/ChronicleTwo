@@ -774,7 +774,30 @@ void VulkanRenderer::Reload(Target &t, const GsRect &r) {
     }
 }
 
+void VulkanRenderer::MarkStale(Target &t, const GsRect &r) {
+    GsRect rect{std::max(r.x0, 0), std::max(r.y0, 0), std::min(r.x1, int(t.image.width)),
+                std::min(r.y1, int(t.image.height))};
+    if (rect.Empty()) {
+        return;
+    }
+    if (t.stale.Empty()) {
+        t.stale = rect;
+    } else {
+        t.stale = GsRect{std::min(t.stale.x0, rect.x0), std::min(t.stale.y0, rect.y0), std::max(t.stale.x1, rect.x1),
+                         std::max(t.stale.y1, rect.y1)};
+    }
+}
+
+void VulkanRenderer::Refresh(Target &t) {
+    if (!t.stale.Empty()) {
+        GsRect rect = t.stale;
+        t.stale = GsRect{0, 0, 0, 0};
+        Reload(t, rect);
+    }
+}
+
 void VulkanRenderer::ReadBack(Target &t) {
+    Refresh(t);
     uint32_t     w = t.image.width, h = t.image.height;
     VkDeviceSize bytes = VkDeviceSize(w) * h * 4;
     if (readback_.size < bytes) {
@@ -853,6 +876,7 @@ VulkanRenderer::Target *VulkanRenderer::GetTarget(uint32_t bp, uint32_t bw, uint
         }
         t.last_used = frame_number_;
         if (t.image.width >= width && t.image.height >= height) {
+            Refresh(t);
             return &t;
         }
         // Grow: copy what the image holds, load the rest from memory.
@@ -877,6 +901,7 @@ VulkanRenderer::Target *VulkanRenderer::GetTarget(uint32_t bp, uint32_t bw, uint
         t.image = grown;
         RetireImage(old);
         t.pages = PagesOf(bp, bw, psm, GsRect{0, 0, int(new_w), int(new_h)});
+        t.stale = GsRect{0, 0, 0, 0};
         Reload(t, GsRect{0, 0, int(new_w), int(new_h)});
         return &t;
     }
@@ -950,9 +975,10 @@ void VulkanRenderer::MemoryWritten(uint32_t bp, uint32_t bw, uint32_t psm, const
         bool same_layout = t->bp == bp && t->bw == bw && PsmBits(t->psm) == PsmBits(psm) &&
                            IsZFormat(t->psm) == IsZFormat(psm);
         if (same_layout) {
-            Reload(*t, rect);
+            MarkStale(*t, rect);
         } else {
-            Reload(*t, GsRect{0, 0, int(t->image.width), int(t->image.height)});
+            // PrepareWrite brought the target back to memory, so all of it reloads.
+            MarkStale(*t, GsRect{0, 0, int(t->image.width), int(t->image.height)});
             t->gpu_dirty = false;
         }
     }
@@ -1023,6 +1049,7 @@ bool VulkanRenderer::ResolveTexture(const GsDrawState &state, const GsClut &clut
             if (offset_y >= int(t.image.height)) {
                 continue;
             }
+            Refresh(t);
             binding->view = &t == color ? CopyForSampling(t) : t.image.view;
             binding->offset_x = 0;
             binding->offset_y = offset_y;
@@ -1377,6 +1404,7 @@ void VulkanRenderer::Present(const GsDisplayState &display) {
     VkOffset3D src0 = {dbx, dby, 0};
     for (auto &t : targets_) {
         if (!t->depth && t->bp == fbp && t->bw == std::max(fbw, 1u) && PsmBits(t->psm) == PsmBits(psm)) {
+            Refresh(*t);
             source = &t->image;
             break;
         }

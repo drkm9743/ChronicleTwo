@@ -23,6 +23,9 @@ game -> libdma / libpkt / libgraph shims (pc/src/sce)
   GS blend becomes dual-source blending.
 * `vif/vu1_host.*` runs VU1 microprograms translated to C++: each is
   registered by the code the game uploads with MPG and runs on `MSCAL`.
+  `vu1/dc2_programs.*` registers Dark Cloud 2's five programs; their
+  translations are built from `GFX_VU1_PROGRAMS_DIR` (the folder with
+  `vu_progs.h`).
 
 ## Building and testing
 
@@ -41,6 +44,10 @@ In the WIN64 build, `pc/CMakeLists.txt` adds this directory and links it into
 `chronicletwo_platform`; the Vulkan headers come from the Vulkan SDK or from
 SDL's source tree.
 
+`gfx_replay` (built when `GFX_VU1_PROGRAMS_DIR` is set) replays the last
+frame of a PCSX2 save state through the whole path and writes the frame
+buffer; see the top of `tests/gfx_replay.cpp`.
+
 Shaders are checked in as SPIR-V headers; after editing `shaders/`, build the
 `gfx_shaders` target (needs `glslangValidator`).
 
@@ -49,6 +56,7 @@ Shaders are checked in as SPIR-V headers; after editing `shaders/`, build the
 * Wiring the game: hardware registers it writes directly (DISPFB/DISPLAY,
   channel 8, timer 0) go through `pc/src/sce/pc_hardware.h`, and DMA tag
   addresses must be reachable through the `MemoryMap` (32-bit addresses).
-* Registering the C++ VU1 microprograms with `Vu1Host`.
+* Calling `RegisterDc2Programs` from the game (it needs the `Vu_prog*`
+  upload packets) and adding the VU1 translations to the repository.
 * GS features the renderer approximates: Ad as blend factor, Cs * (1 + C),
   mipmapping, AA1, dithering, PABE.
