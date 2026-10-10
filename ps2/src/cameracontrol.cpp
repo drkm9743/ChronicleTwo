@@ -2,7 +2,10 @@
 
 #include <cmath>
 
+#ifndef PLATFORM_PC
+// The PC build has no retail copy to link to, so it takes the implicit one.
 #define CAMERA_CONTROL_USE_RETAIL_ASSIGNMENT
+#endif
 #include "cameracontrol.hpp"
 #undef CAMERA_CONTROL_USE_RETAIL_ASSIGNMENT
 #include "collision.hpp"

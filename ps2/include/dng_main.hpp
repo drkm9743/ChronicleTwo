@@ -540,7 +540,12 @@ extern CCameraControl MainCamera;
  * Camera that event scripts move.
  *
  */
+#ifdef PLATFORM_PC
+/* The PS2 build reaches dng_main's EventCamera by its retail symbol. */
+extern CCameraControl &EventCamera__2;
+#else
 extern CCameraControl EventCamera__2;
+#endif
 
 /**
  *

@@ -464,7 +464,7 @@ public:
      * @address 0x135400
      * @size 0x20
      */
-    void Direct(unsigned long reg, unsigned long data);
+    void Direct(u_long reg, u_long data);
 
     /**
      *

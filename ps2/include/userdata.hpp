@@ -1829,7 +1829,7 @@ public:
     float              npc_refresh_hour;  /**< Hour of the day of the last townsfolk refresh. */
     CFishingTournament fish_tournament;   /**< The fishing tournament. */
     CFishingRecord     fish_record;       /**< The fishing records. */
-    unsigned long      costume_bit;       /**< Costumes collected, one bit each. */
+    u_long      costume_bit;       /**< Costumes collected, one bit each. */
     u8                 unk_455a0[0x200];
 
     CInventUserData *GetInventUserData() {
@@ -2793,7 +2793,7 @@ public:
      * @address 0x19FFE0
      * @size 0x10
      */
-    void SetCostumeBit(unsigned long bit);
+    void SetCostumeBit(u_long bit);
 
     /**
      *
@@ -2803,7 +2803,7 @@ public:
      * @address 0x19FFF0
      * @size 0x10
      */
-    unsigned long GetCostumeBit();
+    u_long GetCostumeBit();
 
     /**
      *

@@ -206,6 +206,11 @@ static ANALOG_TABLE_ENTRY analog_table[] = {
 };
 
 extern CFont     Font;
+#ifdef PLATFORM_PC
+// dng_main has a global of this name too; MWCC keeps this one to the unit,
+// clang (with Microsoft extensions) does not, so it is renamed here.
+#define MainBuffer MainBuffer_mainloop
+#endif
 extern mgCMemory MainBuffer;
 /**
  * Active page of the debug menu.

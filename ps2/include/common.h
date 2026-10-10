@@ -9,6 +9,24 @@
 #include "include_asm.h"
 #include "types.h"
 
+#ifdef PLATFORM_PC
+/*
+ * The EE's memory-mapped registers (timers, DMAC, INTC, the GS privileged
+ * registers) have nothing behind them on the PC. Where the game reads or
+ * writes one directly, the PC build calls these with the EE address instead.
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+u_int  pcHwRead32(u_int address);
+void   pcHwWrite32(u_int address, u_int value);
+u_long pcHwRead64(u_int address);
+void   pcHwWrite64(u_int address, u_long value);
+#ifdef __cplusplus
+}
+#endif
+#endif
+
 /**
  * Declares a local whose constructor does not run, the job retail gives an
  * anonymous union around it. C++11 deletes such a union's constructor, so a

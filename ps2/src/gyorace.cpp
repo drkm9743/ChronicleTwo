@@ -77,6 +77,11 @@ static mgCMemory BuffTextureData;
  * Stack memory holding fish-race work data.
  *
  */
+#ifdef PLATFORM_PC
+// dng_main has a global of this name too; MWCC keeps this one to the unit,
+// clang (with Microsoft extensions) does not, so it is renamed here.
+#define BuffWorkData BuffWorkData_gyorace
+#endif
 static mgCMemory BuffWorkData;
 
 /**

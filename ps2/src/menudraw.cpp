@@ -7872,6 +7872,24 @@ void PrimQuad_i_(mgCDrawPrim *prim, mgRect_i_ rect, mgRect_i_ tex_rect) {
     }
 }
 
+#ifdef PLATFORM_PC
+// MWCC names PrimQuad<float> and PrimQuad<int> as the two functions above;
+// any other compiler needs the instances themselves.
+template <>
+void PrimQuad<float>(mgCDrawPrim *prim, mgRect<float> put_rect, mgRect<int> tex_rect) {
+    mgRect_f_ rect = {put_rect.left, put_rect.top, put_rect.right, put_rect.bottom};
+    mgRect_i_ tex = {tex_rect.left, tex_rect.top, tex_rect.right, tex_rect.bottom};
+    PrimQuad_f_(prim, rect, tex);
+}
+
+template <>
+void PrimQuad<int>(mgCDrawPrim *prim, mgRect<int> put_rect, mgRect<int> tex_rect) {
+    mgRect_i_ rect = {put_rect.left, put_rect.top, put_rect.right, put_rect.bottom};
+    mgRect_i_ tex = {tex_rect.left, tex_rect.top, tex_rect.right, tex_rect.bottom};
+    PrimQuad_i_(prim, rect, tex);
+}
+#endif
+
 // Small uninitialised data (.sbss)
 int MenuDrawItemInfoNum;
 

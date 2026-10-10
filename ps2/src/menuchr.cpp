@@ -421,7 +421,7 @@ static short MenuCosutumeLoadPhase;
  * Bit mask of costumes available to the costume menu.
  *
  */
-static unsigned long CostumeAttr;
+static u_long CostumeAttr;
 
 /**
  *
@@ -6703,7 +6703,7 @@ int MenuNPCLoadCheck(CActionChara *chara, mgCMemory *memory, int tex_block) {
     return 0;
 }
 
-void CMenuCostumeSel::UpdateCostumeList(int mode, unsigned long chara_flag) {
+void CMenuCostumeSel::UpdateCostumeList(int mode, u_long chara_flag) {
     CHARA_DATA *chara_data;
     int         kind;
     int         index;

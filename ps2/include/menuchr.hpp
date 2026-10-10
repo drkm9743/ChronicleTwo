@@ -509,7 +509,7 @@ public:
      * @address 0x2C0A80
      * @size 0x1A0
      */
-    void UpdateCostumeList(int mode, unsigned long chara_flag);
+    void UpdateCostumeList(int mode, u_long chara_flag);
 
     /**
      *

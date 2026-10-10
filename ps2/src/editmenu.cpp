@@ -5885,3 +5885,9 @@ void MenuRemovalDraw() {
 
 INCLUDE_RODATA("ps2/asm/pal/nonmatchings/editmenu", DestroyNum_3583__DATA);
 INCLUDE_RODATA("ps2/asm/pal/nonmatchings/editmenu", DestroyPartsName_3587__DATA);
+
+#ifdef PLATFORM_PC
+// Both are zero in the retail executable.
+int   DestroyNum_3583 = 0;
+char *DestroyPartsName_3587 = NULL;
+#endif

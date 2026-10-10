@@ -3,16 +3,17 @@
 # PLATFORM_PC and NONMATCHING, which MWCC never defines.
 #
 # Configure with clang-cl (or clang++ targeting x86_64-pc-windows-msvc):
-#   cmake -S . -B build/win64 -G Ninja -DPLATFORM=WIN64 -DCMAKE_CXX_COMPILER=clang-cl
+#   cmake -S . -B build/win64 -G Ninja -DPLATFORM=WIN64 -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
 #   cmake --build build/win64
+# or cross-compile from Linux with LLVM MinGW (pc/cmake/mingw-clang.cmake).
 #
 # Targets:
+#   chronicletwo (default)            the game, chronicletwo.exe
 #   chronicletwo_game (default)       every game unit, as a static library
 #   chronicletwo_platform (default)   the PS2 SDK libraries implemented on SDL 3
 #                                     and the renderer in gfx/
 #
-# libpad, libgraph, libdma, libpkt, the disc, the memory cards, SIF and sound
-# are implemented; the rest of the SDK is not, so nothing links the game yet.
+# Run it with the PAL disc: chronicletwo.exe <ISO or extracted folder>.
 #
 # SDL is an installed SDL3 of exactly SDL_VERSION when CMake finds one, and
 # otherwise built from its release, downloaded at configure time.
@@ -39,7 +40,9 @@ set(GAME_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/ps2/include)
 # scripts/build/globs.sh keeps the PS2 build's list; here every unit is built.
 file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${GAME_SRC_DIR}/*.cpp)
 
-add_library(chronicletwo_game STATIC ${GAME_SOURCES})
+# Plus what the PS2 build takes from retail bytes, read from the disc here.
+add_library(chronicletwo_game STATIC ${GAME_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game/retail_data.cpp)
 
 # The game's own <cstring>, <libvu0.h> and so on stand in for the host's
 # headers, as they do for MWCC, so the host's include paths are left out.
@@ -105,11 +108,16 @@ if(NOT TARGET chronicletwo_gfx_sdl)
 endif()
 
 add_library(chronicletwo_platform STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ee/hardware.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ee/kernel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/pc_graphics.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/mw_runtime.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libdev_libmpeg.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libdma.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libgraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpkt.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpkt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libvu0.cpp)
 
 # The disc, the memory cards, SIF and sound (pc/src/README.md).
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/platform_sources.cmake)
@@ -121,7 +129,7 @@ target_sources(chronicletwo_platform PRIVATE ${PLATFORM_IO_SOURCES})
 target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce)
 target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR})
 target_compile_definitions(chronicletwo_platform PRIVATE PLATFORM_PC)
-target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3 chronicletwo_gfx_sdl)
+target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3 chronicletwo_gfx_sdl winmm)
 set_target_properties(chronicletwo_platform PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON)
@@ -135,3 +143,31 @@ target_link_libraries(chronicletwo_platform_gfx_test PRIVATE chronicletwo_platfo
 set_target_properties(chronicletwo_platform_gfx_test PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON)
+
+#
+# The executable
+#
+
+add_executable(chronicletwo ${CMAKE_CURRENT_SOURCE_DIR}/src/main/pc_main.cpp)
+target_include_directories(chronicletwo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/gfx)
+target_link_libraries(chronicletwo PRIVATE chronicletwo_game chronicletwo_platform)
+set_target_properties(chronicletwo PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON)
+
+# The game keeps pointers in 32-bit integers (about 1,300 casts), so every
+# address it can reach must be below 2 GiB: no large-address awareness, a low
+# image base and no ASLR. Windows then keeps the whole process under 2 GiB.
+# The scratchpad is mapped at 0x70000000, where the game writes it.
+if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC" OR MSVC)
+    target_link_options(chronicletwo PRIVATE
+        /LARGEADDRESSAWARE:NO /BASE:0x400000 /DYNAMICBASE:NO /HIGHENTROPYVA:NO /STACK:0x800000)
+    # The game calls printf, sprintf and vsprintf as functions, which the UCRT
+    # only exports through this library.
+    target_link_libraries(chronicletwo PRIVATE legacy_stdio_definitions)
+else()
+    target_link_options(chronicletwo PRIVATE
+        -Wl,-Xlink=-largeaddressaware:no -Wl,--image-base=0x400000
+        -Wl,--disable-dynamicbase -Wl,--disable-high-entropy-va -Wl,--stack=0x800000
+        -static)
+endif()

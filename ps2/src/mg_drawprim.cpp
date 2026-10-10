@@ -372,7 +372,7 @@ void mgCDrawPrim::TextureCrd(int u, int v) {
     TextureCrd4(u << 4, v << 4);
 }
 
-void mgCDrawPrim::Direct(unsigned long reg, unsigned long data) {
+void mgCDrawPrim::Direct(u_long reg, u_long data) {
     u_long *dst = (u_long *) write;
     dst[0] = data;
     dst[1] = reg;

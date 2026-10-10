@@ -53,7 +53,7 @@ static int search_txt(char c) {
  * least significant first, without terminating the text.
  *
  */
-static void ConvLongToTxt(unsigned long value, char *text) {
+static void ConvLongToTxt(u_long value, char *text) {
     s32 i;
     s32 digit;
 
@@ -81,10 +81,10 @@ static void ConvLongToTxt(unsigned long value, char *text) {
  * and gives 1, or 0 when a character is not a digit.
  *
  */
-static int ConvTxtToLong(char *text, unsigned long *value) {
-    long result = 0;
-    s32  digit;
-    long weight = 1;
+static int ConvTxtToLong(char *text, u_long *value) {
+    ee_long result = 0;
+    s32     digit;
+    ee_long weight = 1;
     s32  i;
 
     for (i = 0; i < 11; i++) {
@@ -112,12 +112,12 @@ int ConvertBinToTxt(u8 *data, int size, char *text) {
     u8 *cursor = data;
 
     union {
-        unsigned long value;
+        u_long value;
         u8            bytes[8];
     } packed;
 
     char          group[12];
-    unsigned long decoded;
+    u_long decoded;
     s32           count;
     s32           i;
     *text = 0;
@@ -162,7 +162,7 @@ int ConvertTxtToBin(char *text, u8 *data) {
     s32   i;
 
     union {
-        unsigned long value;
+        u_long value;
         u8            bytes[8];
     } decoded;
 

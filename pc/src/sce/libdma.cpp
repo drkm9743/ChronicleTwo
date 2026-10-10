@@ -83,10 +83,12 @@ void pcDmaStart(sceDmaChan *chan) {
         uint32_t spr = chan->sadr & (gfx::kScratchpadBytes - 1);
         bytes = std::min(bytes, size_t(gfx::kScratchpadBytes - spr));
         uint8_t *memory = Address(chan->madr, false);
+        // Through the memory map, whose scratchpad is wherever the game writes it.
+        uint8_t *scratchpad = Address(spr, true);
         if (channel == kChannelFromSpr) {
-            std::memcpy(memory, m.scratchpad + spr, bytes);
+            std::memcpy(memory, scratchpad, bytes);
         } else {
-            std::memcpy(m.scratchpad + spr, memory, bytes);
+            std::memcpy(scratchpad, memory, bytes);
         }
     } else if (channel >= 0) {
         if (chan->chcr.MOD == 1) {

@@ -2,6 +2,7 @@
 // registers, image transfers and the field clock. Packets go through the GIF
 // exactly as the SDK would send them, so what the GS sees is the same.
 
+#include "../ee/kernel.h"
 #include "../platform/pc_graphics.h"
 #include "gfx.h"
 
@@ -137,10 +138,10 @@ void sceGsResetPath() {
 
 int sceGsSyncV(int mode) {
     (void) mode;
-    pc::GraphicsVSync();
-    if (vsync_callback) {
-        vsync_callback(0);
-    }
+    // The EE kernel's vertical blank interrupt paces the fields and runs the
+    // callback; this waits for the next one, as the SDK polls CSR.VSINT.
+    pc::ee::WaitVBlankAfter(pc::ee::VBlankCount());
+    pc::GraphicsPresent();
     return int((gfx::GetMachine().gs.ReadPrivileged(gfx::GS_PRIV_CSR) >> 13) & 1);
 }
 
@@ -152,7 +153,10 @@ int sceGsSyncPath(int mode, u_short timeout) {
     return 0;
 }
 
-void sceGsSyncVCallback(int (*callback)(int)) { vsync_callback = callback; }
+void sceGsSyncVCallback(int (*callback)(int)) {
+    vsync_callback = callback;
+    pc::ee::SetVSyncCallback(callback);
+}
 
 void sceGsSetDefDBuff(sceGsDBuff *db, int psm, int w, int h, int ztest, int zpsm, int clear) {
     std::memset(db, 0, sizeof(*db));

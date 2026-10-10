@@ -62,6 +62,10 @@ extern "C" {
 sceDmaChan *sceDmaGetChan(int channel);
 int         sceDmaSend(sceDmaChan *chan, void *data);
 int         sceDmaSync(sceDmaChan *chan, int mode, int timeout);
+#ifdef PLATFORM_PC
+/* Runs the transfer a channel's registers describe, as setting CHCR.STR does on the EE. */
+void pcDmaStart(sceDmaChan *chan);
+#endif
 
 /**
  * Resets the DMA controller using the requested mode.

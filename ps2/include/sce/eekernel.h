@@ -5,6 +5,13 @@
  * Declares Emotion Engine kernel services and interrupt control.
  */
 
+#ifdef PLATFORM_PC
+/* Windows has functions of these names; the PC build gives the EE's others. */
+#define CreateThread eeCreateThread
+#define TerminateThread eeTerminateThread
+#define GetThreadId eeGetThreadId
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

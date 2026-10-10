@@ -17,6 +17,10 @@
  * @address 0x15D7B0
  * @size 0x80
  */
+#ifdef PLATFORM_PC
+/* The PC build has a main of its own (pc/src/main), which starts the game here. */
+#define main ps2Main
+#endif
 int main();
 
 /**

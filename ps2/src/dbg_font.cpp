@@ -33,9 +33,9 @@ static inline char *VaStart(char *stack_arguments, int named_arguments) {
  * Converts a Shift JIS character code to a JIS character code.
  *
  */
-unsigned long SjisToJis(unsigned long sjis) {
-    unsigned long hi = (sjis >> 8) & 0xFF;
-    unsigned long lo = sjis & 0xFF;
+u_long SjisToJis(u_long sjis) {
+    u_long hi = (sjis >> 8) & 0xFF;
+    u_long lo = sjis & 0xFF;
 
     if (hi >= 0x81 && hi < 0xA0) {
         hi -= 0x81;
@@ -62,10 +62,10 @@ unsigned long SjisToJis(unsigned long sjis) {
  * Converts a Shift JIS character code to a font serial number.
  *
  */
-unsigned long SjisToSerno(unsigned long sjis) {
-    unsigned long jis = SjisToJis(sjis);
-    unsigned long offset = 0xFFFFFFFFFFFFFFDFUL;
-    unsigned long row = (jis >> 8) + offset;
+u_long SjisToSerno(u_long sjis) {
+    u_long jis = SjisToJis(sjis);
+    u_long offset = 0xFFFFFFFFFFFFFFDFUL;
+    u_long row = (jis >> 8) + offset;
 
     return row * 94 + ((jis & 0xFF) + offset);
 }
@@ -75,7 +75,7 @@ unsigned long SjisToSerno(unsigned long sjis) {
  * Maps a single-byte character to its debug font serial number.
  *
  */
-unsigned long ascii2serno(u8 ch) {
+u_long ascii2serno(u8 ch) {
     int code;
 
     code = ch & 0xFF;
@@ -241,7 +241,7 @@ void dbgCJISFont::Clear() {
     buffer[0] = 0;
 }
 
-void dbgCJISFont::__putc(unsigned long serno) {
+void dbgCJISFont::__putc(u_long serno) {
     mgCTextureManager *textures = &mgTexManager;
     int                glyph_width = 16;
     mgCTexture        *texture;
@@ -396,7 +396,7 @@ void dbgCJISFont::PrintDirect(int start_x, int start_y, char *format, ...) {
             unsigned char byte = *cursor;
 
             if (byte >= 0xA1 && byte < 0xE0) {
-                unsigned long serno = ascii2serno(byte);
+                u_long serno = ascii2serno(byte);
 
                 if (serno == DBG_FONT_SERNO_DAKUTEN && prev_serno != 0) {
                     serno = prev_serno + 1;
@@ -413,8 +413,8 @@ void dbgCJISFont::PrintDirect(int start_x, int start_y, char *format, ...) {
                 __putc(serno);
                 cursor++;
             } else {
-                unsigned long low = (unsigned char) cursor[1];
-                unsigned long sjis = low;
+                u_long low = (unsigned char) cursor[1];
+                u_long sjis = low;
                 sjis = (((long) *cursor << 8) & 0xFF00) | sjis;
                 cursor += 2;
                 __putc(SjisToSerno(sjis));

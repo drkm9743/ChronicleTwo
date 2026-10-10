@@ -56,7 +56,7 @@ public:
     int           y;                                        /**< Screen y of the next glyph. */
     int           char_width;                               /**< Width of a full-width glyph cell; tabs advance by two cells. */
     int           char_height;                              /**< Height of a glyph cell and of a line. */
-    unsigned long prev_serno;                               /**< Serial number of the preceding half-width kana, for merging sound marks; 0 for none. */
+    u_long prev_serno;                               /**< Serial number of the preceding half-width kana, for merging sound marks; 0 for none. */
     char          buffer[0x800];                            /**< Text buffer, emptied by Clear. */
     int           color[4];                                 /**< Red, green, blue and alpha of the glyphs. */
     int           back_enable;                              /**< Non-zero to draw a box behind each glyph; toggled by "ESC[$". */
@@ -114,7 +114,7 @@ public:
      * @address 0x187930
      * @size 0x4A4
      */
-    void __putc(unsigned long serno);
+    void __putc(u_long serno);
 
     /**
      *

@@ -1,6 +1,10 @@
 #include "common.h"
 #include "mw_runtime.h"
+#ifndef PLATFORM_PC
+// Here MWCC puts CTreasureBox::Initialize out of line; the PC build keeps the
+// header's inline copy, as a COFF linker will not take both.
 #define DNG_DEBUG_SOURCE
+#endif
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -321,11 +325,13 @@ int dngDebugKey() {
     return 1;
 }
 
+#ifndef PLATFORM_PC
 void CTreasureBox::Initialize() {
     state = 0;
     lid_open = 0;
     flags = 1;
 }
+#endif
 
 void DBGCMD_ReloadEnemy(int monster_id, int reset) {
     float        spawn_position[4];

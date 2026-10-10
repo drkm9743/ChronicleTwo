@@ -414,7 +414,11 @@ int CScene::LoadMapFromMemory(int map_no, int step, SCN_LOADMAP_INFO2 *info) {
     }
 
     if (step == SCN_LOADMAP_STEP_CREATE_MAP) {
+#ifdef PLATFORM_PC
+        start_count = pcHwRead32(timer0_count);
+#else
         start_count = *(volatile u_int *) timer0_count;
+#endif
         map = GetMap(map_no);
 
         if (info->place_parts_max > 0) {
@@ -422,7 +426,11 @@ int CScene::LoadMapFromMemory(int map_no, int step, SCN_LOADMAP_INFO2 *info) {
         }
 
         map->CreateMap(&mds_list_set, stack);
+#ifdef PLATFORM_PC
+        printf("5:%d\n", pcHwRead32(timer0_count) - start_count);
+#else
         printf("5:%d\n", *(volatile u_int *) timer0_count - start_count);
+#endif
         return SCN_LOADMAP_STEP_FUNC_POINT;
     }
 

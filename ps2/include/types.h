@@ -35,12 +35,21 @@ typedef unsigned long long u_long;
 #else
 typedef unsigned long u_long;
 #endif
+/** The Emotion Engine's long, a doubleword; Windows keeps long at a word. */
+#ifdef PLATFORM_PC
+typedef long long ee_long;
+#else
+typedef long ee_long;
+#endif
 /** SDK spelling for an unsigned quadword. */
 typedef unsigned __int128 u_long128;
 
 /** Size of an object in bytes on the PlayStation 2 target. */
 #ifdef PLATFORM_PC
 typedef __SIZE_TYPE__ size_t;
+/* Integers that hold a pointer, for the casts a 64-bit build cannot do through u_int. */
+typedef __UINTPTR_TYPE__ uintptr_t;
+typedef __INTPTR_TYPE__ intptr_t;
 #else
 typedef unsigned int size_t;
 #endif

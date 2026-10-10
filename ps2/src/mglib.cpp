@@ -363,7 +363,11 @@ int mgGetPerformanceMeterFlag() {
  */
 int VSyncCallBack(int field) {
     call_back_active = 1;
+#ifdef PLATFORM_PC
+    u_long csr = pcHwRead64(gs_csr);
+#else
     u_long csr = *(volatile u_long *) gs_csr;
+#endif
     VSyncField = !((csr >> 13) & 1);
 
     if (VSyncCallBack2 != 0) {
@@ -564,7 +568,11 @@ void mgInit(int screen_mode, int video_mode) {
         sceDmaSend(DmaCH1, program);
         sceGsSyncPath(0, 0);
     }
+#ifdef PLATFORM_PC
+    pcHwWrite32(timer0_mode, 0x83);
+#else
     *(volatile u_int *) timer0_mode = 0x83;
+#endif
     mgFrameRate = 2;
     vcount = 0;
     over_vsync = 0;
@@ -695,8 +703,13 @@ void mgBeginFrame(mgCDrawManager *manager) {
         mgDrawManager.render_info = &mgRenderInfo;
     }
 
+#ifdef PLATFORM_PC
+    pcHwWrite32(timer0_count, 0);
+    h_count = pcHwRead32(timer0_count);
+#else
     *(int *) timer0_count = 0;
     h_count = *(int *) timer0_count;
+#endif
 
     int red = fptosi(mgBackColor[0]);
     mgDBuff.clear0.rgbaq.bytes.red = red;
@@ -820,9 +833,17 @@ void mgEndFrame(mgCDrawManager *manager) {
     int          magnification;
     int          offset_y;
 
+#ifdef PLATFORM_PC
+    cpu_ratio = 100.0f * ((pcHwRead32(timer0_count) - h_count) / frame_ticks);
+#else
     cpu_ratio = 100.0f * ((*(volatile u_int *) timer0_count - h_count) / frame_ticks);
+#endif
     mgWaitFrame();
+#ifdef PLATFORM_PC
+    wait_start = pcHwRead32(timer0_count);
+#else
     wait_start = *(volatile u_int *) timer0_count;
+#endif
 
     if (draw_performance_meter != 0) {
         packet_free = 100.0f * (float) (mgDrawManager.packet_memory->stack_size - mgDrawManager.packet_memory->stack_used) / (float) mgDrawManager.packet_memory->stack_size;
@@ -935,7 +956,11 @@ void mgEndFrame(mgCDrawManager *manager) {
     if (mgAntialiasing != 0) {
         mgDBuff.disp[mgDBuffID].pmode = 0x7F23;
     } else {
+#ifdef PLATFORM_PC
+        pcHwWrite64(gs_pmode, 0xFF23);
+#else
         *(volatile u_long *) gs_pmode = 0xFF23;
+#endif
         mgDBuff.disp[mgDBuffID].pmode = 0xFF23;
     }
 
@@ -949,17 +974,32 @@ void mgEndFrame(mgCDrawManager *manager) {
     FlushCache(0);
     sceGsSwapDBuff(&mgDBuff, mgDBuffID);
     sceDmaSync(DmaCH2, 0, 0);
+#ifdef PLATFORM_PC
+    pcHwWrite64(gs_dispfb1, (u_long) frame->FBP | ((u_long) frame->FBW << 9) | ((u_long) frame->PSM << 15) | ((u_long) 1 << 43));
+    pcHwWrite64(gs_display1, (u_long) 0x290 | ((u_long) (offset_y + 72) << 12) | ((u_long) magnification << 23) | ((u_long) (mgScreenWidth * (magnification + 1) - 1) << 32) | ((u_long) (mgScreenHeight - 2) << 44));
+    pcHwWrite64(gs_dispfb2, (u_long) frame->FBP | ((u_long) frame->FBW << 9) | ((u_long) frame->PSM << 15));
+    pcHwWrite64(gs_display2, (u_long) 0x290 | ((u_long) (offset_y + 72) << 12) | ((u_long) magnification << 23) | ((u_long) (mgScreenWidth * (magnification + 1) - 1) << 32) | ((u_long) (mgScreenHeight - 2) << 44));
+#else
     *(volatile u_long *) gs_dispfb1 = (u_long) frame->FBP | ((u_long) frame->FBW << 9) | ((u_long) frame->PSM << 15) | ((u_long) 1 << 43);
     *(volatile u_long *) gs_display1 = (u_long) 0x290 | ((u_long) (offset_y + 72) << 12) | ((u_long) magnification << 23) | ((u_long) (mgScreenWidth * (magnification + 1) - 1) << 32) | ((u_long) (mgScreenHeight - 2) << 44);
     *(volatile u_long *) gs_dispfb2 = (u_long) frame->FBP | ((u_long) frame->FBW << 9) | ((u_long) frame->PSM << 15);
     *(volatile u_long *) gs_display2 = (u_long) 0x290 | ((u_long) (offset_y + 72) << 12) | ((u_long) magnification << 23) | ((u_long) (mgScreenWidth * (magnification + 1) - 1) << 32) | ((u_long) (mgScreenHeight - 2) << 44);
+#endif
+#ifdef PLATFORM_PC
+    mgNowFrameRate = (pcHwRead32(timer0_count) - h_count) / 262.0f;
+#else
     mgNowFrameRate = (*(volatile u_int *) timer0_count - h_count) / 262.0f;
+#endif
 
     if (!(mgNowFrameRate - (float) mgFrameRate <= 1.0f)) {
         free_ratio = 0.0f;
         mgNowFrameRate = 1.0f + (float) mgFrameRate;
     } else {
+#ifdef PLATFORM_PC
+        free_ratio = 100.0f * ((pcHwRead32(timer0_count) - wait_start) / frame_ticks);
+#else
         free_ratio = 100.0f * ((*(volatile u_int *) timer0_count - wait_start) / frame_ticks);
+#endif
     }
 
     count++;

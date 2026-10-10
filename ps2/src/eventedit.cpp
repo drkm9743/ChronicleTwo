@@ -308,6 +308,10 @@ void DrawBox(float (*corners)[4], int r, int g, int b) {
     prim.End();
 }
 
+#ifdef PLATFORM_PC
+// event_func defines the same function; the PS2 linker keeps both, a PC one does not.
+#define VectMatMul VectMatMul_eventedit
+#endif
 void VectMatMul(float *out, float *vec, float (*mat)[4]) {
     float result[4];
 

@@ -3903,8 +3903,8 @@ void ClsMes::DrawFont() {
                     bottom = mgScreenHeight - 1;
                 }
 
-                prim.Direct(SCE_GS_SCISSOR_1, (unsigned long) left | ((unsigned long) right << 16) |
-                                                  ((unsigned long) top << 32) | ((unsigned long) bottom << 48));
+                prim.Direct(SCE_GS_SCISSOR_1, (u_long) left | ((u_long) right << 16) |
+                                                  ((u_long) top << 32) | ((u_long) bottom << 48));
             }
 
             x += text_x;
@@ -3954,8 +3954,8 @@ void ClsMes::DrawFont() {
         last_y = y;
 
         if (scissor_on != 0 && line_pos_on[line] == 0) {
-            prim.Direct(SCE_GS_SCISSOR_1, ((unsigned long) (mgScreenWidth - 1) << 16) |
-                                              ((unsigned long) (mgScreenHeight - 1) << 48));
+            prim.Direct(SCE_GS_SCISSOR_1, ((u_long) (mgScreenWidth - 1) << 16) |
+                                              ((u_long) (mgScreenHeight - 1) << 48));
         }
     }
 

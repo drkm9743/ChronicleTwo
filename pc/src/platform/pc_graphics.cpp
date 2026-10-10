@@ -88,8 +88,7 @@ void GraphicsShutdown() {
     g.started = false;
 }
 
-void GraphicsVSync() {
-    Graphics &g = State();
+void GraphicsPresent() {
     gfx::GetMachine().gs.VSync();
 
     SDL_Event event;
@@ -99,6 +98,11 @@ void GraphicsVSync() {
             std::exit(0);
         }
     }
+}
+
+void GraphicsVSync() {
+    Graphics &g = State();
+    GraphicsPresent();
 
     Uint64 now = SDL_GetTicksNS();
     if (now < g.next_field) {

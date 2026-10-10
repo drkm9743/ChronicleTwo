@@ -161,6 +161,11 @@ CRandomCircle         RandomCircle;
 CGeoStone             GeoStone;
 CCameraControl        MainCamera;
 CCameraControl        EventCamera;
+#ifdef PLATFORM_PC
+// The names other units reach these two by on the PS2 (see dng_main.hpp).
+mgCMemory      &BuffWorkData__2 = BuffWorkData;
+CCameraControl &EventCamera__2 = EventCamera;
+#endif
 CHealingEffectMan     HealingEffectMan;
 CMiniEffPrimMan       MiniEffPrimMan;
 CCharacter2           ItemBaseData[19];

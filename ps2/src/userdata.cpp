@@ -4676,11 +4676,11 @@ int CUserDataManager::AddMoney(int amount) {
     return money;
 }
 
-void CUserDataManager::SetCostumeBit(unsigned long bits) {
+void CUserDataManager::SetCostumeBit(u_long bits) {
     costume_bit = bits;
 }
 
-unsigned long CUserDataManager::GetCostumeBit() {
+u_long CUserDataManager::GetCostumeBit() {
     return costume_bit;
 }
 

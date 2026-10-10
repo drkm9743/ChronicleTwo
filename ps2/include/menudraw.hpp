@@ -2468,6 +2468,13 @@ void SetEffectSpectolFusion(mgCMemory *memory, CMenuEffect **effect, CGameDataUs
  */
 template <class T>
 void PrimQuad(mgCDrawPrim *prim, mgRect<T> put_rect, mgRect<int> tex_rect);
+#ifdef PLATFORM_PC
+/* Defined in menudraw.cpp over PrimQuad_f_ and PrimQuad_i_, the names MWCC gives these two. */
+template <>
+void PrimQuad<float>(mgCDrawPrim *prim, mgRect<float> put_rect, mgRect<int> tex_rect);
+template <>
+void PrimQuad<int>(mgCDrawPrim *prim, mgRect<int> put_rect, mgRect<int> tex_rect);
+#endif
 
 /**
  *

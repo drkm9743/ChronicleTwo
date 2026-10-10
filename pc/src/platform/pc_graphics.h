@@ -26,6 +26,12 @@ void GraphicsShutdown();
  */
 void GraphicsVSync();
 
+/**
+ * Ends a field without waiting: presents and handles window events. For a
+ * caller whose fields are paced by the EE kernel's vertical blank interrupt.
+ */
+void GraphicsPresent();
+
 /** The graphics side of the PS2 the shims drive. */
 gfx::Machine &GraphicsMachine();
 

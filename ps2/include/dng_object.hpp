@@ -19,7 +19,12 @@ class mgCMemory;
  * Dungeon work memory, cleared every frame and used for drawing and events as well as collision polygons.
  *
  */
+#ifdef PLATFORM_PC
+/* The PS2 build reaches dng_main's BuffWorkData by its retail symbol. */
+extern mgCMemory &BuffWorkData__2;
+#else
 extern mgCMemory BuffWorkData__2;
+#endif
 
 /**
  *

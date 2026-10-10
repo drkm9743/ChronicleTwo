@@ -136,18 +136,28 @@ void SendDMA(void *packet, int size) {
         start_dma = 0;
     }
 
+#ifdef PLATFORM_PC
+    // Setting STR starts the transfer; the PC runs it there and then.
+    pcHwWrite32(0x1000E010, 0x100);
+    DmaCH8->sadr = (u_int) (uintptr_t) GetScrPad();
+    DmaCH8->madr = (u_int) (uintptr_t) packet;
+    DmaCH8->qwc = size;
+    DmaCH8->chcr.STR = 1;
+    pcDmaStart(DmaCH8);
+#else
     *(u_int *) 0x1000E010 = 0x100;
     DmaCH8->sadr = (u_long) GetScrPad() & 0x0FFFFFFF;
     DmaCH8->madr = (u_int) packet;
     DmaCH8->qwc = size;
     DmaCH8->chcr.STR = 1;
+#endif
     start_dma = 1;
     buff_id = !buff_id;
 }
 
 #pragma global_optimizer off
 
-int mgSetPkTEX0(u_int *packet, unsigned long tex0, unsigned long tex1) {
+int mgSetPkTEX0(u_int *packet, u_long tex0, u_long tex1) {
     *(u_long128 *) packet = *(u_long128 *) &set_tex0_dma;
     *(u_long128 *) (packet + 4) = *(u_long128 *) &set_tex0_giftag;
     *(unsigned long *) (packet + 8) = tex1;
@@ -160,7 +170,7 @@ int mgSetPkTEX0(u_int *packet, unsigned long tex0, unsigned long tex1) {
 #pragma global_optimizer reset
 #pragma global_optimizer off
 
-int mgSetPkTEX0(u_int *packet, unsigned long tex0, unsigned long tex1, unsigned long texa) {
+int mgSetPkTEX0(u_int *packet, u_long tex0, u_long tex1, u_long texa) {
     *(u_long128 *) packet = *(u_long128 *) &set_texa_dma;
     *(u_long128 *) (packet + 4) = *(u_long128 *) &set_texa_giftag;
     *(unsigned long *) (packet + 8) = tex1;
