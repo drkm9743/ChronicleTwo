@@ -39,9 +39,12 @@ cmake -S . -B build/win64 -G Ninja -DPLATFORM=WIN64 -DCMAKE_CXX_COMPILER=clang-c
 cmake --build build/win64
 ```
 
-So far this builds every game unit into a static library. The PS2 SDK and the
-Metrowerks runtime the game calls are not implemented for Windows yet, so
-nothing links against it. The sources see `PLATFORM_PC` and `NONMATCHING`,
+So far this builds every game unit into a static library, and a platform
+library that implements the PS2 SDK on [SDL 3](https://libsdl.org) 3.4.18.
+Only libpad is there yet: any controller SDL supports reads as a DualShock 2,
+with rumble. The rest of the SDK and the Metrowerks runtime are still missing,
+so nothing links the game yet. CMake uses an installed SDL 3.4.18 when it
+finds one, and otherwise downloads and builds that release. The sources see `PLATFORM_PC` and `NONMATCHING`,
 which MWCC never defines: PC-only code sits behind `#ifdef PLATFORM_PC`, and
 the C versions of the VU0 assembly behind `#ifdef NONMATCHING`, so the PS2
 build's objects stay byte-identical. `-DPC_LAYOUT_ASSERTS=ON` checks the PS2

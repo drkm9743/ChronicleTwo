@@ -7,10 +7,13 @@
 #   cmake --build build/win64
 #
 # Targets:
-#   chronicletwo_game (default)   every game unit, as a static library
+#   chronicletwo_game (default)       every game unit, as a static library
+#   chronicletwo_platform (default)   the PS2 SDK libraries implemented on SDL 3
 #
-# The PS2 SDK and the Metrowerks runtime the units call are not implemented
-# yet, so nothing links against the library so far.
+# Only libpad is implemented so far, so nothing links the game yet.
+#
+# SDL is an installed SDL3 of exactly SDL_VERSION when CMake finds one, and
+# otherwise built from its release, downloaded at configure time.
 
 enable_language(CXX)
 
@@ -67,3 +70,35 @@ else()
         -nostdinc -nostdinc++ -fno-exceptions -fno-rtti -fms-extensions -w
         -Wno-c++11-narrowing)
 endif()
+
+#
+# Platform: the PS2 SDK on SDL 3
+#
+
+set(SDL_VERSION 3.4.18)
+find_package(SDL3 ${SDL_VERSION} EXACT CONFIG QUIET)
+if(SDL3_FOUND)
+    message(STATUS "Using the installed SDL ${SDL3_VERSION}")
+else()
+    include(FetchContent)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(SDL3
+        URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL3-${SDL_VERSION}.tar.gz
+        URL_HASH SHA256=9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(SDL3)
+endif()
+
+add_library(chronicletwo_platform STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp)
+
+# The platform code is ordinary host code: it sees the host's headers, and the
+# SDK headers only for the declarations it implements.
+target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce)
+target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3)
+set_target_properties(chronicletwo_platform PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON)
