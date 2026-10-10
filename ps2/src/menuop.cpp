@@ -1616,7 +1616,11 @@ void CMenuOption::UpdateOptionForm() {
 
                 for (i = 0, offset = 0; i < 3; i++, offset += 4) {
                     if (config->map == i) {
+#ifdef PLATFORM_PC
+                        EnableButton(loop_row[i]);
+#else
                         EnableButton(*(MENUFORMPARTS_TYPE **) ((u8 *) loop_row + offset));
+#endif
                     }
                 }
             }

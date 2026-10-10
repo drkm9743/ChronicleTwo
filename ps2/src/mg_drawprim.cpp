@@ -601,7 +601,12 @@ void mgCDrawManager::BeginDraw(mgCMemory *new_memory, int *id_list) {
         blocks = (group_num + 1) / 4 + 1;
     }
 
+#ifdef PLATFORM_PC
+    // Pointers take twice the room the retail quadword counts leave them.
+    packet_list = (mgSORT_PACKET ***) memory->Alloc(blocks * 2);
+#else
     packet_list = (mgSORT_PACKET ***) memory->Alloc(blocks);
+#endif
     unk_14 = (int *) memory->Alloc(blocks);
     packet_num = (int *) memory->Alloc(blocks);
     sort_table = (mgSORT_PACKET **) memory->Alloc(sort_num);
@@ -615,6 +620,18 @@ void mgCDrawManager::BeginDraw(mgCMemory *new_memory, int *id_list) {
 #pragma optimization_level 1
 
 void mgCDrawManager::ClearTable() {
+#ifdef PLATFORM_PC
+    for (int i = 0; i < group_num; i++) {
+        packet_list[i] = NULL;
+        unk_14[i] = 0;
+        packet_num[i] = 0;
+    }
+
+    // sort_num quadwords hold twice as many pointers as the retail loop clears; only bucket 0 is used.
+    for (int j = 0; j < sort_num; j++) {
+        sort_table[j] = NULL;
+    }
+#else
     int *a = (int *) packet_list;
     int *b = unk_14;
     int *c = packet_num;
@@ -629,6 +646,7 @@ void mgCDrawManager::ClearTable() {
     for (int j = 0; j < sort_num; j++) {
         *packet++ = 0;
     }
+#endif
 }
 
 #pragma optimization_level reset
@@ -637,7 +655,11 @@ void mgCDrawManager::ClearTable() {
 #pragma global_optimizer off
 
 void mgCDrawManager::PreEndDraw() {
+#ifdef PLATFORM_PC
+    packet_cursor = (mgSORT_PACKET ***) memory->Alloc(group_num / 2 + 1);
+#else
     packet_cursor = (mgSORT_PACKET ***) memory->Alloc(group_num / 4 + 1);
+#endif
     int *sizes = packet_num;
 
     for (int i = 0; i < group_num; i++) {
@@ -645,7 +667,11 @@ void mgCDrawManager::PreEndDraw() {
         sizes++;
 
         if (size > 0) {
+#ifdef PLATFORM_PC
+            packet_list[i] = (mgSORT_PACKET **) memory->Alloc(size / 2 + 1);
+#else
             packet_list[i] = (mgSORT_PACKET **) memory->Alloc(size / 4 + 1);
+#endif
             packet_cursor[i] = packet_list[i];
         }
     }
@@ -718,6 +744,16 @@ int mgCDrawManager::Draw(int group, sceVif1Packet *vif_packet) {
 
     offset = group << 2;
 
+#ifdef PLATFORM_PC
+    if ((entry = packet_list[group]) == NULL) {
+        return 1;
+    }
+
+    sceVif1PkTerminate(vif_packet);
+    tag = vif_packet->pCurrent;
+    start = tag;
+    entry = &packet_list[group][packet_num[group] - 1];
+#else
     if ((entry = *(mgSORT_PACKET ***) ((u_char *) packet_list + offset)) == NULL) {
         return 1;
     }
@@ -726,6 +762,7 @@ int mgCDrawManager::Draw(int group, sceVif1Packet *vif_packet) {
     tag = vif_packet->pCurrent;
     start = tag;
     entry = &(*(mgSORT_PACKET ***) ((u_char *) packet_list + offset))[*(int *) ((u_char *) packet_num + offset) - 1];
+#endif
     common = NULL;
 
     // Packets are called in the reverse of their registration order.
@@ -801,7 +838,11 @@ void mgCDrawManager::AddPacket(int group, u_long128 *common, u_long128 *packet, 
             }
         }
 
+#ifdef PLATFORM_PC
+        node = (mgSORT_PACKET *) memory->Alloc((sizeof(mgSORT_PACKET) + 15) / 16);
+#else
         node = (mgSORT_PACKET *) memory->Alloc(1);
+#endif
         node->next = *sort_table;
         *sort_table = node;
         node->common = common;

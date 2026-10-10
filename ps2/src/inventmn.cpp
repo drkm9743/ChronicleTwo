@@ -2694,7 +2694,11 @@ void CMenuInvent::GradationSet(int mode) {
 
                 do {
                     MENUFORMPARTS_TYPE *part =
+#ifdef PLATFORM_PC
+                        invent_okeff_form->GetPartInfo(invent_grade_fff[offset / 4]);
+#else
                         invent_okeff_form->GetPartInfo(*(char **) ((u8 *) invent_grade_fff + offset));
+#endif
                     i++;
 
                     part->y = 224.0f;
@@ -5852,7 +5856,11 @@ void PictureDraw(mgCTexture *tex, USER_PICTURE_INFO *photo, float x, float y, fl
     prim->Begin(6);
     prim->Texture(tex);
     prim->Color(red, green, blue, alpha);
+#ifdef PLATFORM_PC
+    prim->Direct(0x3B, 0x80 | ((u_long) 0x80 << 32));
+#else
     prim->Direct(0x3B, 0x80 | (0x80UL << 32));
+#endif
     put_rect.Set(x, y, w, h);
     PrimQuad(prim, put_rect, tex_rect);
     prim->End();

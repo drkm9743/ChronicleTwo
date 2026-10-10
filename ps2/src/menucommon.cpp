@@ -1019,8 +1019,13 @@ int MenuCommonReadData(mgCMemory *memory, char **names, int mode) {
 
     i = 0;
 
+#ifdef PLATFORM_PC
+    while (names[i / 4] != NULL) {
+        size = LoadFileMenu(names[i / 4], memory->stack + memory->stack_used, mode);
+#else
     while (*(char **) ((u8 *) names + i) != NULL) {
         size = LoadFileMenu(*(char **) ((u8 *) names + i), memory->stack + memory->stack_used, mode);
+#endif
         memory->Alloc(align16_blocks(size));
         total += size;
         i += 4;

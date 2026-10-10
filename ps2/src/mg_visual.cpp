@@ -160,10 +160,10 @@ void SendDMA(void *packet, int size) {
 int mgSetPkTEX0(u_int *packet, u_long tex0, u_long tex1) {
     *(u_long128 *) packet = *(u_long128 *) &set_tex0_dma;
     *(u_long128 *) (packet + 4) = *(u_long128 *) &set_tex0_giftag;
-    *(unsigned long *) (packet + 8) = tex1;
-    *(unsigned long *) (packet + 10) = 0x14;
-    *(unsigned long *) (packet + 12) = tex0;
-    *(unsigned long *) (packet + 14) = 6;
+    *(u_long *) (packet + 8) = tex1;
+    *(u_long *) (packet + 10) = 0x14;
+    *(u_long *) (packet + 12) = tex0;
+    *(u_long *) (packet + 14) = 6;
     return 4;
 }
 
@@ -173,12 +173,12 @@ int mgSetPkTEX0(u_int *packet, u_long tex0, u_long tex1) {
 int mgSetPkTEX0(u_int *packet, u_long tex0, u_long tex1, u_long texa) {
     *(u_long128 *) packet = *(u_long128 *) &set_texa_dma;
     *(u_long128 *) (packet + 4) = *(u_long128 *) &set_texa_giftag;
-    *(unsigned long *) (packet + 8) = tex1;
-    *(unsigned long *) (packet + 10) = 0x14;
-    *(unsigned long *) (packet + 12) = tex0;
-    *(unsigned long *) (packet + 14) = 6;
-    *(unsigned long *) (packet + 16) = texa;
-    *(unsigned long *) (packet + 18) = 0x3B;
+    *(u_long *) (packet + 8) = tex1;
+    *(u_long *) (packet + 10) = 0x14;
+    *(u_long *) (packet + 12) = tex0;
+    *(u_long *) (packet + 14) = 6;
+    *(u_long *) (packet + 16) = texa;
+    *(u_long *) (packet + 18) = 0x3B;
     return 5;
 }
 

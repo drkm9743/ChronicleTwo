@@ -1388,7 +1388,11 @@ void CCharacter2::DeleteExtMotion() {
     }
 
     for (j = 1, offset = 4; j < CHARA_IMAGE_MAX; j++, offset += 4) {
+#ifdef PLATFORM_PC
+        slot = &this->images[j];
+#else
         slot = (mgIMG_FILE_HEADER **) ((u8 *) this + offset + 0x2C4);
+#endif
         images = *slot;
 
         if (images != 0) {

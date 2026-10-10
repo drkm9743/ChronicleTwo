@@ -1318,7 +1318,11 @@ void CMap::DrawWater(mgCCamera *camera, mgCTexture *screen, mgCTexture *overlay)
                 overlay_surface->SetScale(overlay_scale);
 
                 for (overlay_parts_no = 0, overlay_parts_offset = 0; overlay_parts_no < overlay_water->parts_num; overlay_parts_offset += 4, overlay_parts_no++) {
+#ifdef PLATFORM_PC
+                    parts = overlay_water->parts[overlay_parts_no];
+#else
                     parts = *(CMapParts **) ((u8 *) overlay_water->parts + overlay_parts_offset);
+#endif
 
                     if (parts == NULL) {
                         mgDrawDirect(overlay_surface);

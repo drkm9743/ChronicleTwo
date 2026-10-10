@@ -422,15 +422,24 @@ int CVillagerMngr::GetAppearVlgr(int progress, int time, int map_no, int *villag
                                 output_position = output_offset;
 
                                 do {
+#ifdef PLATFORM_PC
+                                    place = schedule->place[alternative][time];
+#else
                                     place = *(CVillagerPlaceInfo **) ((u8 *) (time * sizeof(void *)) + (int) schedule + alternative_offset + 8);
+#endif
 
                                     if (place != NULL) {
                                         handled = 1;
                                         selected = 1;
 
                                         if (map_no >= 0 && place->map_no == map_no) {
+#ifdef PLATFORM_PC
+                                            places[found] = place;
+                                            villager_ids[found] = villager_id;
+#else
                                             *(CVillagerPlaceInfo **) ((u8 *) places + output_position) = place;
                                             *(int *) ((u8 *) villager_ids + output_position) = villager_id;
+#endif
                                             output_position += sizeof(int);
                                             output_offset += sizeof(int);
                                             found++;
@@ -462,11 +471,20 @@ int CVillagerMngr::GetAppearVlgr(int progress, int time, int map_no, int *villag
                         fallback_output_position = found * sizeof(int);
 
                         do {
+#ifdef PLATFORM_PC
+                            place = schedule->place[fallback_alternative][time];
+#else
                             place = *(CVillagerPlaceInfo **) ((u8 *) (time * sizeof(void *)) + (int) schedule + fallback_offset + 8);
+#endif
 
                             if (place != NULL && map_no >= 0 && place->map_no == map_no) {
+#ifdef PLATFORM_PC
+                                places[found] = place;
+                                villager_ids[found] = villager_id;
+#else
                                 *(CVillagerPlaceInfo **) ((u8 *) places + fallback_output_position) = place;
                                 *(int *) ((u8 *) villager_ids + fallback_output_position) = villager_id;
+#endif
                                 fallback_output_position += sizeof(int);
                                 found++;
                             }
