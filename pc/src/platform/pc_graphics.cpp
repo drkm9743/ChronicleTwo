@@ -32,6 +32,10 @@ public:
         draws_++;
         vertices_ += count;
         last_frame_ = state.frame;
+        last_state_ = state;
+        if (count > 0) {
+            last_vertex_ = vertices[0];
+        }
         if (inner) {
             inner->Draw(state, vertices, count, clut);
         }
@@ -90,20 +94,44 @@ private:
         if (inner) {
             inner->SyncToMemory(fbp, fbw, psm, gfx::GsRect{0, 0, w, h});
         }
+        std::fprintf(stderr, "trace: display circuit %d bp %u bw %u psm %u %dx%d: %d of %d sampled pixels not black\n",
+                     circuit + 1, fbp, fbw, psm, w, h, CountLit(fbp, fbw, psm, w, h), ((w + 1) / 2) * ((h + 1) / 2));
+        // The buffer drawn last, and how.
+        uint32_t dbp = uint32_t(last_frame_ & 0x1FF) * 32, dbw = uint32_t((last_frame_ >> 16) & 0x3F);
+        uint32_t dpsm = uint32_t((last_frame_ >> 24) & 0x3F);
+        if (dbw != 0) {
+            if (inner) {
+                inner->SyncToMemory(dbp, dbw, dpsm, gfx::GsRect{0, 0, w, h});
+            }
+            std::fprintf(stderr, "trace: drawn bp %u bw %u psm %u: %d sampled pixels not black\n", dbp, dbw, dpsm,
+                         CountLit(dbp, dbw, dpsm, w, h));
+        }
+        const gfx::GsDrawState &d = last_state_;
+        const gfx::GsVertex    &v = last_vertex_;
+        std::fprintf(stderr,
+                     "trace: last draw topology %u tme %u abe %u fst %u test %llx alpha %llx scissor %llx zbuf %llx "
+                     "tex0 %llx | vertex %.1f,%.1f z %u st %.3f,%.3f q %.3f rgba %08x\n",
+                     d.topology, d.tme, d.abe, d.fst, (unsigned long long) d.test, (unsigned long long) d.alpha,
+                     (unsigned long long) d.scissor, (unsigned long long) d.zbuf, (unsigned long long) d.tex0, v.x, v.y,
+                     v.z, v.s, v.t, v.q, v.rgba);
+    }
+
+    static int CountLit(uint32_t bp, uint32_t bw, uint32_t psm, int w, int h) {
         gfx::GsMemory &memory = gfx::GetMachine().memory;
         int            lit = 0;
         for (int y = 0; y < h; y += 2) {
             for (int x = 0; x < w; x += 2) {
-                if (memory.ReadColor32(psm, fbp, fbw, x, y) & 0xFFFFFF) {
+                if (memory.ReadColor32(psm, bp, bw, x, y) & 0xFFFFFF) {
                     lit++;
                 }
             }
         }
-        std::fprintf(stderr, "trace: display circuit %d bp %u bw %u psm %u %dx%d: %d of %d sampled pixels not black\n",
-                     circuit + 1, fbp, fbw, psm, w, h, lit, ((w + 1) / 2) * ((h + 1) / 2));
+        return lit;
     }
 
-    uint64_t vsyncs_ = 0, draws_ = 0, vertices_ = 0, uploads_ = 0, last_frame_ = 0;
+    uint64_t         vsyncs_ = 0, draws_ = 0, vertices_ = 0, uploads_ = 0, last_frame_ = 0;
+    gfx::GsDrawState last_state_ = {};
+    gfx::GsVertex    last_vertex_ = {};
 };
 
 /** The window is 2x the PS2's 640x448 frame buffer. */
