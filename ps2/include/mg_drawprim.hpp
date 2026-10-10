@@ -86,7 +86,11 @@ enum mgPACKET_CODE {
     MG_GIFTAG_PRE = 1 << 14,          /**< GIF tag bit that writes the PRIM field to the PRIM register, in the tag's second word. */
     MG_GIFTAG_PRIM_SHIFT = 15,        /**< Position of the GIF tag's PRIM field in the tag's second word. */
     MG_GIFTAG_NREG_SHIFT = 28,        /**< Position of the GIF tag's NREG field in the tag's second word. */
+#ifdef PLATFORM_PC
+    MG_UNCACHED = 0, /* the PC has no uncached mirror of main memory */
+#else
     MG_UNCACHED = 0x20000000,         /**< Address bit that selects uncached access to main memory. */
+#endif
     MG_VIF_OFFSET = 0x02 << 24,       /**< VIF OFFSET code: sets the VU1 double-buffer offset. */
     MG_VIF_BASE = 0x03 << 24,         /**< VIF BASE code: sets the VU1 double-buffer base address. */
     MG_VIF_FLUSHA = 0x13 << 24,       /**< VIF FLUSHA code: waits for the VU program and every GIF path to finish. */

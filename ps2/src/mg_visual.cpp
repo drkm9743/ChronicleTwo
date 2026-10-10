@@ -720,7 +720,7 @@ u_int mgCVisualMDT::CreatePacket(mgCDrawManager *manager) {
 
     while (node != NULL) {
         node->packet = (u_long128 *) cursor;
-        int    size = SetMaterialRef((u_long128 *) (data_cursor | 0x20000000),
+        int    size = SetMaterialRef((u_long128 *) (data_cursor | MG_UNCACHED),
                                      model->material + node->material,
                                      info->attr->program_mode);
         u_int *tag = (u_int *) cursor;
@@ -734,7 +734,7 @@ u_int mgCVisualMDT::CreatePacket(mgCDrawManager *manager) {
 
         for (mgCFace *sub = node->face; sub != NULL;) {
             if (type != sub->type) {
-                SetPModeRef((u_long128 *) (data_cursor | 0x20000000), sub->type);
+                SetPModeRef((u_long128 *) (data_cursor | MG_UNCACHED), sub->type);
                 u_int *mode_tag = (u_int *) cursor;
                 cursor += 16;
                 mode_tag[0] = 0x30000003;
@@ -751,7 +751,7 @@ u_int mgCVisualMDT::CreatePacket(mgCDrawManager *manager) {
             sub_tag[1] = data_cursor;
             sub_tag[2] = 0;
             sub_tag[3] = 0;
-            size = CreateFacePacket((u_int *) (data_cursor | 0x20000000), sub);
+            size = CreateFacePacket((u_int *) (data_cursor | MG_UNCACHED), sub);
             data_cursor += size * 16;
             sub = sub->next;
             sub_tag[0] |= size;
@@ -795,7 +795,7 @@ u_int mgCVisualFixMDT::CreatePacket(mgCDrawManager *manager) {
     while (node != NULL) {
         node->packet = (u_long128 *) cursor;
         int size =
-            SetMaterialRef((u_long128 *) (data_cursor | 0x20000000), material + node->material,
+            SetMaterialRef((u_long128 *) (data_cursor | MG_UNCACHED), material + node->material,
                            info->attr->program_mode);
         u_int *tag = (u_int *) cursor;
         cursor += 16;
@@ -808,7 +808,7 @@ u_int mgCVisualFixMDT::CreatePacket(mgCDrawManager *manager) {
 
         for (mgCFace *sub = node->face; sub != NULL; sub = sub->next) {
             if (type != sub->type) {
-                SetPModeRef((u_long128 *) (data_cursor | 0x20000000), sub->type);
+                SetPModeRef((u_long128 *) (data_cursor | MG_UNCACHED), sub->type);
                 u_int *mode_tag = (u_int *) cursor;
                 cursor += 16;
                 mode_tag[0] = 0x30000003;

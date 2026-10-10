@@ -169,8 +169,10 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
             continue;
         }
         if (surface_ && !HasExtension(exts, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
+            rejected += std::string(props.deviceName) + ": no swapchain; ";
             continue;
         }
+        bool queued = false;
         uint32_t qf_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(pd, &qf_count, nullptr);
         std::vector<VkQueueFamilyProperties> qfs(qf_count);
@@ -192,6 +194,7 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
             if (!options.device_name.empty() && ContainsIgnoringCase(props.deviceName, options.device_name)) {
                 score += 10;
             }
+            queued = true;
             if (score > best_score) {
                 best_score = score;
                 physical_device = pd;
@@ -202,7 +205,11 @@ bool VulkanContext::Init(const VulkanContextOptions &options, std::string *error
             }
             break;
         }
+        if (!queued) {
+            rejected += std::string(props.deviceName) + ": no queue that draws and presents; ";
+        }
     }
+    rejected_devices = rejected;
     if (physical_device == VK_NULL_HANDLE) {
         return Fail(error, "no suitable Vulkan device (" + rejected + ")");
     }

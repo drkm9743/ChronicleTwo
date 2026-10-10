@@ -49,6 +49,8 @@ public:
     VkQueue                          queue = VK_NULL_HANDLE;
     uint32_t                         queue_family = 0;
     VkPhysicalDeviceProperties       properties = {};
+    /** Devices Init passed over, with the reason for each. */
+    std::string rejected_devices;
     VkPhysicalDeviceMemoryProperties memory_properties = {};
     VkFormat                         depth_format = VK_FORMAT_UNDEFINED;
 

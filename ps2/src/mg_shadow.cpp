@@ -254,7 +254,7 @@ u_int mgCShadowMDT::CreatePacket(mgCDrawManager *draw_manager) {
             tag[1] = face_cursor;
             tag[2] = 0;
             tag[3] = 0;
-            int count = CreateFacePacket((u_int *) (face_cursor | 0x20000000), group);
+            int count = CreateFacePacket((u_int *) (face_cursor | MG_UNCACHED), group);
             face_cursor += count * 16;
             group = group->next;
             tag[0] |= count;

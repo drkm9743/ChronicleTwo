@@ -56,6 +56,9 @@ bool StartRenderer(Graphics &g) {
         return false;
     }
     std::fprintf(stderr, "graphics: %s\n", g.context.properties.deviceName);
+    if (!g.context.rejected_devices.empty()) {
+        std::fprintf(stderr, "graphics: passed over %s\n", g.context.rejected_devices.c_str());
+    }
     g.renderer.reset(new gfx::VulkanRenderer(g.context, gfx::GetMachine().memory));
     if (!g.renderer->Init(&error)) {
         std::fprintf(stderr, "graphics: %s\n", error.c_str());
