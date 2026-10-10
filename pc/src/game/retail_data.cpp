@@ -38,3 +38,12 @@ int pcLoadRetailData() {
     LOAD(My_dma_start0);
     return ok;
 }
+
+/** The microprogram packets, for the PC to register its C++ versions of them. */
+void pcRetailVuPrograms(const void *packets[5]) {
+    packets[0] = Vu_progmain;
+    packets[1] = Vu_prog0;
+    packets[2] = Vu_prog_sdw;
+    packets[3] = Vu_prog_3dsp;
+    packets[4] = Vu_prog_wtr;
+}

@@ -1,7 +1,7 @@
 # PS2 SDK on the PC: disc, memory card, SIF and sound
 
 These folders implement the SDK calls the game makes for its disc, its memory
-cards and its sound, for the WIN64 build (`chronicletwo_platform`). The game's
+cards and its sound, for the PC build (`chronicletwo_platform`). The game's
 own code is unchanged: it calls the same functions, and these answer as the
 PS2 did.
 

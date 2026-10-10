@@ -1,10 +1,10 @@
-# Cross-compiles the WIN64 build from Linux with Clang and the MinGW-w64
+# Cross-compiles the PC build from Linux with Clang and the MinGW-w64
 # headers and libraries (Debian/Ubuntu: apt install clang lld mingw-w64).
 # The platform needs libstdc++'s threading, which only the "posix" variant
 # of MinGW's GCC has; Clang takes whichever of /usr/lib/gcc/x86_64-w64-mingw32/
 # 13-posix and 13-win32 sorts last, so move 13-win32 out of the way.
 #
-#   cmake -S . -B build/mingw -G Ninja -DPLATFORM=WIN64 \
+#   cmake -S . -B build/mingw -G Ninja -DPLATFORM=PC \
 #       -DCMAKE_TOOLCHAIN_FILE=pc/cmake/mingw-clang.cmake
 #
 # The result runs under Wine, which is how the build is tried without Windows.

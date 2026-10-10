@@ -40,7 +40,7 @@ device and reads the results back through GS transfers; Mesa's lavapipe is
 enough. With SDL 3 available (`-DCMAKE_PREFIX_PATH=<SDL3 install>`),
 `gfx_sdl_demo` opens a window and draws a moving scene.
 
-In the WIN64 build, `pc/CMakeLists.txt` adds this directory and links it into
+In the PC build, `pc/CMakeLists.txt` adds this directory and links it into
 `chronicletwo_platform`; the Vulkan headers come from the Vulkan SDK or from
 SDL's source tree.
 

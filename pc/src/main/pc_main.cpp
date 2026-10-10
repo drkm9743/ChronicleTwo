@@ -22,9 +22,11 @@
 #include "../ee/kernel.h"
 #include "../host/host_paths.h"
 #include "gfx.h"
+#include "vu1/dc2_programs.h"
 
 int ps2Main();
 int pcLoadRetailData();
+void pcRetailVuPrograms(const void *packets[5]);
 
 namespace {
 
@@ -136,6 +138,18 @@ int main(int argc, char **argv) {
     if (!LoadExecutable() || !pcLoadRetailData()) {
         std::fprintf(stderr, "chronicletwo: cannot read %s from the disc; is it the PAL Dark Chronicle?\n",
                      kExecutable);
+        return 1;
+    }
+    const void *vu[5];
+    pcRetailVuPrograms(vu);
+    gfx::Dc2ProgramPackets packets;
+    packets.progmain = vu[0];
+    packets.model = vu[1];
+    packets.shadow = vu[2];
+    packets.sprite3d = vu[3];
+    packets.water = vu[4];
+    if (gfx::RegisterDc2Programs(gfx::GetMachine().vu1, packets) != 5) {
+        std::fprintf(stderr, "chronicletwo: the VU1 programs on the disc are not the ones pc/vu1 translates\n");
         return 1;
     }
     Retail().bytes.clear();

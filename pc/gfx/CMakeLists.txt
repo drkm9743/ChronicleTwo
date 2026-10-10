@@ -1,5 +1,5 @@
 # pc/gfx: the GS-level renderer of the PC build. Builds as part of
-# PLATFORM=WIN64 (pc/CMakeLists.txt adds it) or on its own for tests:
+# PLATFORM=PC (pc/CMakeLists.txt adds it) or on its own for tests:
 #
 #   cmake -S pc/gfx -B build/gfx -G Ninja && cmake --build build/gfx
 #   ctest --test-dir build/gfx

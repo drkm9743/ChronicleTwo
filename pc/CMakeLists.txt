@@ -3,7 +3,7 @@
 # PLATFORM_PC and NONMATCHING, which MWCC never defines.
 #
 # Configure with clang-cl (or clang++ targeting x86_64-pc-windows-msvc):
-#   cmake -S . -B build/win64 -G Ninja -DPLATFORM=WIN64 -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
+#   cmake -S . -B build/win64 -G Ninja -DPLATFORM=PC -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
 #   cmake --build build/win64
 # or cross-compile from Linux with LLVM MinGW (pc/cmake/mingw-clang.cmake).
 #
@@ -22,12 +22,15 @@ enable_language(CXX)
 
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(FATAL_ERROR
-        "PLATFORM=WIN64 needs Clang (clang-cl or clang++), not "
+        "PLATFORM=PC needs Clang (clang-cl or clang++), not "
         "${CMAKE_CXX_COMPILER_ID}: the sources use GNU attributes and 128-bit "
         "integers that MSVC does not accept.")
 endif()
+if(NOT WIN32)
+    message(FATAL_ERROR "PLATFORM=PC builds for Windows only for now (the EE kernel runs on Windows fibers).")
+endif()
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "PLATFORM=WIN64 needs a 64-bit target.")
+    message(FATAL_ERROR "PLATFORM=PC needs a 64-bit target.")
 endif()
 
 option(PC_LAYOUT_ASSERTS
@@ -102,6 +105,8 @@ endif()
 if(DEFINED sdl3_SOURCE_DIR)
     set(GFX_SDL_SOURCE_DIR ${sdl3_SOURCE_DIR})
 endif()
+# The game's VU1 microprograms in C++ (pc/vu1), built by gfx/ with its adapter.
+set(GFX_VU1_PROGRAMS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vu1 CACHE PATH "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gfx ${CMAKE_CURRENT_BINARY_DIR}/gfx)
 if(NOT TARGET chronicletwo_gfx_sdl)
     message(FATAL_ERROR "pc/gfx found no Vulkan headers: install the Vulkan SDK")
@@ -129,7 +134,7 @@ target_sources(chronicletwo_platform PRIVATE ${PLATFORM_IO_SOURCES})
 target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce)
 target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR})
 target_compile_definitions(chronicletwo_platform PRIVATE PLATFORM_PC)
-target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3 chronicletwo_gfx_sdl winmm)
+target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3 chronicletwo_gfx_sdl chronicletwo_gfx_vu1 winmm)
 set_target_properties(chronicletwo_platform PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON)
