@@ -411,7 +411,26 @@ void mgSetRotateThread(int priority) {
  * @size 0x64
  *
  */
+#ifdef PLATFORM_PC
+/* Blocks until the next vertical blank has run its handlers, then shows the
+ * frame (pc/src/sce/libgraph.cpp). Spinning on vcount as the EE does would
+ * hold the host thread and present nothing. */
+extern "C" void pcWaitVBlank();
+#endif
+
 void WaitVSync(int start, int frames) {
+#ifdef PLATFORM_PC
+    while ((mgGetVSyncCount() - start) < frames) {
+        pcWaitVBlank();
+
+        if (rot_priority > 0) {
+            RotateThreadReadyQueue(rot_priority);
+        }
+    }
+
+    return;
+#endif
+
 wait:
     if ((mgGetVSyncCount() - start) < frames) {
         if (rot_priority > 0) {

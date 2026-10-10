@@ -145,6 +145,11 @@ int sceGsSyncV(int mode) {
     return int((gfx::GetMachine().gs.ReadPrivileged(gfx::GS_PRIV_CSR) >> 13) & 1);
 }
 
+extern "C" void pcWaitVBlank() {
+    pc::ee::WaitVBlankAfter(pc::ee::VBlankCount());
+    pc::GraphicsPresent();
+}
+
 int sceGsSyncPath(int mode, u_short timeout) {
     // Transfers finish inside sceDmaSend; nothing is ever in flight.
     (void) mode;
