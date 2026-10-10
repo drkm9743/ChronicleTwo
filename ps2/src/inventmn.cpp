@@ -550,7 +550,12 @@ static short debug_invent_select;
  * Work buffer for photo name definitions.
  *
  */
+#ifdef PLATFORM_PC
+// The name table holds 8-byte pointers on PC: twice the room.
+static char pic_name_text_buff_1660[0x2480 * 2] __attribute__((aligned(16)));
+#else
 static char pic_name_text_buff_1660[0x2480];
+#endif
 
 /**
  *
@@ -1560,7 +1565,11 @@ void LoadFilePictureName() {
     char         align_buffer[0x5000];
     char        *buffer;
     unsigned int size;
+#ifdef PLATFORM_PC
+    stack.stSetBuffer((u_long128 *) pic_name_text_buff_1660, 0x248 * 2);
+#else
     stack.stSetBuffer((u_long128 *) pic_name_text_buff_1660, 0x248);
+#endif
     PicNameStack = &stack;
     buffer = (char *) MenuCalcBufAlignment((u_long128 *) align_buffer);
     size = LoadFileMenu("neta2.lst", (u_long128 *) buffer, 1);

@@ -12,10 +12,15 @@ mgCDrawEnv::mgCDrawEnv() {
 }
 
 mgCDrawEnv &mgCDrawEnv::operator=(mgCDrawEnv &source) {
+#ifdef PLATFORM_PC
+    // On PC a draw environment inside another object may be only 8-byte aligned.
+    __builtin_memcpy(this, &source, 4 * sizeof(u_long128));
+#else
     ((u_long128 *) this)[0] = ((u_long128 *) &source)[0];
     ((u_long128 *) this)[1] = ((u_long128 *) &source)[1];
     ((u_long128 *) this)[2] = ((u_long128 *) &source)[2];
     ((u_long128 *) this)[3] = ((u_long128 *) &source)[3];
+#endif
     return *this;
 }
 
