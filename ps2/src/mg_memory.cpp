@@ -15,6 +15,11 @@ void *MG_ADDRESS_CHECK(void *address, char *where) {
     return address;
 }
 
+#ifdef PLATFORM_PC
+/* Placement new is in pc/src/runtime/pc_memory.cpp: it widens the allocation
+ * it is handed when the PC's type is larger than the quadwords retail asked for. */
+void pcNoteAlloc(mgCMemory *memory, u_long128 *data, int size);
+#else
 void *operator new(size_t size, u_long128 *buffer) {
     return buffer;
 }
@@ -22,6 +27,7 @@ void *operator new(size_t size, u_long128 *buffer) {
 void *operator new[](size_t size, u_long128 *buffer) {
     return buffer;
 }
+#endif
 
 void mgCMemory::Init() {
     heap_size = 0;
@@ -199,6 +205,9 @@ u_long128 *mgCMemory::stAlloc(int size) {
 
     u_long128 *data = &stack[old_used];
     stack_used = new_used;
+#ifdef PLATFORM_PC
+    pcNoteAlloc(this, data, size);
+#endif
     return data;
 }
 
@@ -222,6 +231,9 @@ u_long128 *mgCMemory::Alloc(int size) {
 
     u_long128 *data = &stack[old_used];
     stack_used = new_used;
+#ifdef PLATFORM_PC
+    pcNoteAlloc(this, data, size);
+#endif
     return data;
 }
 

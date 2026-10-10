@@ -43,8 +43,10 @@ set(GAME_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/ps2/include)
 # scripts/build/globs.sh keeps the PS2 build's list; here every unit is built.
 file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${GAME_SRC_DIR}/*.cpp)
 
-# Plus what the PS2 build takes from retail bytes, read from the disc here.
+# Plus the game's PC pieces: what the PS2 build takes from retail bytes (read
+# from the disc here) and placement new into mgCMemory.
 add_library(chronicletwo_game STATIC ${GAME_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game/pc_memory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/game/retail_data.cpp)
 
 # The game's own <cstring>, <libvu0.h> and so on stand in for the host's

@@ -140,8 +140,14 @@ struct RS_STACKDATA {
     union {
         float         f; /**< Value of a float. */
         int           i; /**< Value of an integer. */
+#ifdef PLATFORM_PC
+        /* 4 bytes as on the EE: callers step through the stack by byte counts. */
+        ptr32<char>         s;
+        ptr32<RS_STACKDATA> p;
+#else
         char         *s; /**< Value of a string. */
         RS_STACKDATA *p; /**< Stack slot a reference points at. */
+#endif
     } val;               /**< Value held by this stack slot. */
 };
 
@@ -173,7 +179,11 @@ STATIC_ASSERT(sizeof(vmcode_t) == 0xC);
  */
 struct funcdata {
     u32   addr;  /**< Nonnegative byte offset of the function's first instruction in the code section. */
+#ifdef PLATFORM_PC
+    ptr32<char> name; /* read in place from the script file */
+#else
     char *name;  /**< Name of the function, for runtime error messages. */
+#endif
     int   local; /**< Number of frame slots, arguments included. */
     int   arg;   /**< Number of argument slots. */
 };
@@ -186,9 +196,16 @@ STATIC_ASSERT(sizeof(funcdata) == 0x10);
  *
  */
 struct RS_CALLDATA {
+#ifdef PLATFORM_PC
+    /* 12 bytes as on the EE: callers size the call stack in bytes. */
+    ptr32<vmcode_t>     ret;
+    ptr32<RS_STACKDATA> frame;
+    ptr32<funcdata>     func;
+#else
     vmcode_t     *ret;   /**< Caller's call instruction, to return to. */
     RS_STACKDATA *frame; /**< Caller's stack frame. */
     funcdata     *func;  /**< Caller's function. */
+#endif
 };
 
 STATIC_ASSERT(sizeof(RS_CALLDATA) == 0xC);

@@ -29,10 +29,18 @@ enum mgSTACK_MODE {
  *
  */
 struct mgMEMORY_BLOCK {
+#ifdef PLATFORM_PC
+    /* One quadword as on the EE: the heap counts headers in quadwords. */
+    ptr32<u_long128>      data;
+    int                   size;
+    int                   unk_8;
+    ptr32<mgMEMORY_BLOCK> next;
+#else
     u_long128      *data; /**< Start of the block's contents, directly after this header. */
     int             size; /**< Quadwords the block occupies, header included. */
     int             unk_8;
     mgMEMORY_BLOCK *next; /**< Following block, or NULL for the terminating header. */
+#endif
 };
 
 STATIC_ASSERT(sizeof(mgMEMORY_BLOCK) == 0x10);

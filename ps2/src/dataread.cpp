@@ -867,7 +867,7 @@ static int CDRead(char *path, u_int *buffer, int *out_size) {
         return 0;
     }
 
-    printf("%s %d %d\n", entry->name, entry->sector, size_to_sector(entry->size));
+    printf("%s %d %d\n", (char *) entry->name, entry->sector, size_to_sector(entry->size));
     mode.trycount = 0;
     mode.spindlctrl = 1;
     mode.datapattern = 0;
