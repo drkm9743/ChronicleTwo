@@ -9,8 +9,10 @@
 # Targets:
 #   chronicletwo_game (default)       every game unit, as a static library
 #   chronicletwo_platform (default)   the PS2 SDK libraries implemented on SDL 3
+#                                     and the renderer in gfx/
 #
-# Only libpad is implemented so far, so nothing links the game yet.
+# libpad, libgraph, libdma and libpkt are implemented so far, so nothing links
+# the game yet.
 #
 # SDL is an installed SDL3 of exactly SDL_VERSION when CMake finds one, and
 # otherwise built from its release, downloaded at configure time.
@@ -92,13 +94,40 @@ else()
     FetchContent_MakeAvailable(SDL3)
 endif()
 
+# The renderer: the GS, GIF, VIF1 and DMA emulated in gfx/, drawn with Vulkan.
+# SDL's source tree carries the Vulkan headers when no Vulkan SDK is installed.
+if(DEFINED sdl3_SOURCE_DIR)
+    set(GFX_SDL_SOURCE_DIR ${sdl3_SOURCE_DIR})
+endif()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/gfx ${CMAKE_CURRENT_BINARY_DIR}/gfx)
+if(NOT TARGET chronicletwo_gfx_sdl)
+    message(FATAL_ERROR "pc/gfx found no Vulkan headers: install the Vulkan SDK")
+endif()
+
 add_library(chronicletwo_platform STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/pc_graphics.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libdma.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libgraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpkt.cpp)
 
 # The platform code is ordinary host code: it sees the host's headers, and the
-# SDK headers only for the declarations it implements.
+# SDK headers only for the declarations it implements (those pull in the
+# game's common.h, so PLATFORM_PC picks the 64-bit spellings there).
 target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce)
-target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3)
+target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR})
+target_compile_definitions(chronicletwo_platform PRIVATE PLATFORM_PC)
+target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3 chronicletwo_gfx_sdl)
 set_target_properties(chronicletwo_platform PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON)
+
+# Not built by default: opens a window (SDL_VIDEO_DRIVER=offscreen avoids it).
+add_executable(chronicletwo_platform_gfx_test EXCLUDE_FROM_ALL
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/platform_gfx_test.cpp)
+target_include_directories(chronicletwo_platform_gfx_test PRIVATE ${GAME_INCLUDE_DIR}/sce ${GAME_INCLUDE_DIR})
+target_compile_definitions(chronicletwo_platform_gfx_test PRIVATE PLATFORM_PC)
+target_link_libraries(chronicletwo_platform_gfx_test PRIVATE chronicletwo_platform)
+set_target_properties(chronicletwo_platform_gfx_test PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON)
