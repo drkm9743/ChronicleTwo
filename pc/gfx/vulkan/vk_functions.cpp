@@ -23,9 +23,17 @@ PFN_vkGetInstanceProcAddr LoadSystemVulkan() {
     }
     return reinterpret_cast<PFN_vkGetInstanceProcAddr>(GetProcAddress(module, "vkGetInstanceProcAddr"));
 #else
-    void *module = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
-    if (module == nullptr) {
-        module = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+#ifdef __APPLE__
+    // The Vulkan SDK's loader, or MoltenVK on its own.
+    const char *names[] = {"libvulkan.1.dylib", "libvulkan.dylib", "libMoltenVK.dylib"};
+#else
+    const char *names[] = {"libvulkan.so.1", "libvulkan.so"};
+#endif
+    void *module = nullptr;
+    for (const char *name : names) {
+        if (module == nullptr) {
+            module = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+        }
     }
     if (module == nullptr) {
         return nullptr;
@@ -47,10 +55,18 @@ void LoadInstanceFunctions(PFN_vkGetInstanceProcAddr get, VkInstance instance) {
 }
 
 const char *LoadDeviceFunctions(VkDevice device) {
-#define GFX_VK_LOAD(name)                                                    \
-    name = reinterpret_cast<PFN_##name>(vkGetDeviceProcAddr(device, #name)); \
-    if (name == nullptr) {                                                   \
-        return #name;                                                        \
+    // Functions Vulkan 1.3 made core are also found under their extension
+    // names (KHR_dynamic_rendering, EXT_extended_dynamic_state) on 1.2 devices.
+#define GFX_VK_LOAD(name)                                                              \
+    name = reinterpret_cast<PFN_##name>(vkGetDeviceProcAddr(device, #name));           \
+    if (name == nullptr) {                                                             \
+        name = reinterpret_cast<PFN_##name>(vkGetDeviceProcAddr(device, #name "KHR")); \
+    }                                                                                  \
+    if (name == nullptr) {                                                             \
+        name = reinterpret_cast<PFN_##name>(vkGetDeviceProcAddr(device, #name "EXT")); \
+    }                                                                                  \
+    if (name == nullptr) {                                                             \
+        return #name;                                                                  \
     }
     GFX_VK_DEVICE_FUNCTIONS(GFX_VK_LOAD)
 #undef GFX_VK_LOAD

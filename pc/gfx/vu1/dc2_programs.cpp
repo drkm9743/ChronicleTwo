@@ -1,6 +1,7 @@
 #include "dc2_programs.h"
 #include "vu_progs.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -8,6 +9,11 @@
 #if defined(__SSE__) || defined(_M_X64) || defined(_M_AMD64)
 #include <xmmintrin.h>
 #define DC2_HAVE_MXCSR 1
+#elif defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
+#define DC2_HAVE_FPCR 1
+#elif defined(_M_ARM64)
+#include <intrin.h>
+#define DC2_HAVE_FPCR_MSVC 1
 #endif
 
 namespace gfx {
@@ -38,24 +44,41 @@ void KickFromState(const Vec4 *packet) {
     s.host->Kick(reinterpret_cast<const uint32_t(*)[4]>(s.state.mem), uint32_t(packet - s.state.mem));
 }
 
-/** Round toward zero, flush and treat denormals as zero, for the length of one call. */
+/**
+ * Round toward zero, flush and treat denormals as zero, for the length of one
+ * call: MXCSR on x86-64 (RC = 11, FTZ, DAZ), FPCR on ARM64 (RMode = 11, FZ).
+ */
 class VuFloatMode {
 public:
     VuFloatMode() {
-#ifdef DC2_HAVE_MXCSR
+#if defined(DC2_HAVE_MXCSR)
         saved_ = _mm_getcsr();
-        _mm_setcsr((saved_ & ~0x6000u) | 0x6000u | 0x8040u);
+        _mm_setcsr((unsigned(saved_) & ~0x6000u) | 0x6000u | 0x8040u);
+#elif defined(DC2_HAVE_FPCR)
+        uint64_t fpcr;
+        __asm__ volatile("mrs %0, fpcr" : "=r"(fpcr));
+        saved_ = fpcr;
+        fpcr |= (uint64_t(3) << 22) | (uint64_t(1) << 24);
+        __asm__ volatile("msr fpcr, %0" : : "r"(fpcr));
+#elif defined(DC2_HAVE_FPCR_MSVC)
+        saved_ = _ReadStatusReg(ARM64_FPCR);
+        _WriteStatusReg(ARM64_FPCR, saved_ | (uint64_t(3) << 22) | (uint64_t(1) << 24));
 #endif
     }
 
     ~VuFloatMode() {
-#ifdef DC2_HAVE_MXCSR
-        _mm_setcsr(saved_);
+#if defined(DC2_HAVE_MXCSR)
+        _mm_setcsr(unsigned(saved_));
+#elif defined(DC2_HAVE_FPCR)
+        uint64_t fpcr = saved_;
+        __asm__ volatile("msr fpcr, %0" : : "r"(fpcr));
+#elif defined(DC2_HAVE_FPCR_MSVC)
+        _WriteStatusReg(ARM64_FPCR, saved_);
 #endif
     }
 
 private:
-    unsigned saved_ = 0;
+    uint64_t saved_ = 0;
 };
 
 /** Runs `fn` on a copy of VU1 data memory and writes the copy back. */

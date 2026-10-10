@@ -30,8 +30,10 @@ typedef unsigned short u_short;
 /** SDK spelling for an unsigned word. */
 typedef unsigned int u_int;
 /** SDK spelling for an unsigned long, a doubleword on the Emotion Engine. */
-#ifdef PLATFORM_PC
-typedef unsigned long long u_long;
+#if defined(PLATFORM_PC) && defined(_WIN32)
+typedef unsigned long long u_long; /* long is 32 bits on Windows */
+#elif defined(PLATFORM_PC)
+typedef unsigned long u_long; /* the type <sys/types.h> gives it on Linux and macOS */
 #else
 typedef unsigned long u_long;
 #endif
