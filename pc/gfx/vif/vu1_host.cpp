@@ -76,4 +76,8 @@ void Vu1Host::Kick(uint32_t addr) {
     gif_.Kick(vu_->mem, addr);
 }
 
+void Vu1Host::Kick(const uint32_t (*mem)[4], uint32_t addr) {
+    gif_.Kick(mem, addr);
+}
+
 } // namespace gfx

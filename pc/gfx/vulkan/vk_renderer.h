@@ -68,7 +68,8 @@ private:
         uint32_t                  bp = 0, bw = 0, psm = 0;
         bool                      depth = false;
         Image                     image;
-        bool                      gpu_dirty = false; // drawn into since GS memory last had its contents
+        bool                      gpu_dirty = false;    // drawn into since GS memory last had its contents
+        GsRect                    stale = {0, 0, 0, 0}; // written in GS memory since, not yet loaded
         std::bitset<kGsPageCount> pages;
         uint64_t                  last_used = 0;
     };
@@ -126,7 +127,11 @@ private:
     std::bitset<kGsPageCount> PagesOf(uint32_t bp, uint32_t bw, uint32_t psm, const GsRect &rect) const;
     void                      ReadBack(Target &target);
     void                      Reload(Target &target, const GsRect &rect);
-    void                      DestroyTarget(size_t index);
+    /** Notes memory writes over a target; loaded when the target is next used (writes come row by row). */
+    void MarkStale(Target &target, const GsRect &rect);
+    /** Loads what MarkStale noted. */
+    void Refresh(Target &target);
+    void DestroyTarget(size_t index);
 
     // Textures.
     bool        ResolveTexture(const GsDrawState &state, const GsClut &clut, Target *color, TextureBinding *binding,

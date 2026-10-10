@@ -8,12 +8,17 @@
 #   chronicletwo_gfx_core     GS memory and registers, GIF, VIF1, VU1 host, DMA (no GPU)
 #   chronicletwo_gfx_vulkan   the Vulkan renderer (Vulkan headers only; the loader comes at run time)
 #   chronicletwo_gfx_sdl      window and swapchain on SDL 3 (needs the SDL3::SDL3 target)
+#   chronicletwo_gfx_vu1      the game's VU1 microprograms in C++, hooked into Vu1Host
+#                             (needs GFX_VU1_PROGRAMS_DIR: the folder with vu_progs.h)
 
 cmake_minimum_required(VERSION 3.20)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(chronicletwo_gfx CXX)
     set(GFX_STANDALONE ON)
+    if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+        set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
+    endif()
 else()
     set(GFX_STANDALONE OFF)
 endif()
@@ -100,6 +105,38 @@ if(GFX_GLSLANG)
     add_custom_target(gfx_shaders DEPENDS ${GFX_SHADER_OUTPUTS})
 endif()
 
+#
+# VU1 microprograms: the C++ translations live in their own folder (they are
+# checked against the microcode there); this builds them with the adapter.
+# They compute as the VU does only without contraction and with the rounding
+# mode honoured, so they get strict floating point.
+#
+set(GFX_VU1_PROGRAMS_DIR "" CACHE PATH "Folder with the C++ VU1 microprograms (vu_progs.h)")
+if(GFX_VU1_PROGRAMS_DIR AND EXISTS ${GFX_VU1_PROGRAMS_DIR}/vu_progs.h)
+    set(GFX_VU1_SOURCES
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog0.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog0_blend.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog0_clip.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog0_light.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog_3dsp.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog_sdw.cpp
+        ${GFX_VU1_PROGRAMS_DIR}/vu_prog_wtr.cpp)
+    add_library(chronicletwo_gfx_vu1 STATIC vu1/dc2_programs.cpp ${GFX_VU1_SOURCES})
+    target_include_directories(chronicletwo_gfx_vu1 PRIVATE ${GFX_VU1_PROGRAMS_DIR})
+    target_include_directories(chronicletwo_gfx_vu1 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(chronicletwo_gfx_vu1 PUBLIC chronicletwo_gfx_core)
+    target_compile_definitions(chronicletwo_gfx_vu1 PRIVATE
+        PROG0_HAVE_CLIP PROG0_HAVE_PLIGHT PROG0_HAVE_MLIGHT PROG0_HAVE_BLEND PROG0_HAVE_REFSP)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        set_source_files_properties(${GFX_VU1_SOURCES} PROPERTIES
+            COMPILE_OPTIONS "/clang:-frounding-math;/clang:-ffp-contract=off")
+    else()
+        set_source_files_properties(${GFX_VU1_SOURCES} PROPERTIES
+            COMPILE_OPTIONS "-frounding-math;-ffp-contract=off")
+    endif()
+    set_target_properties(chronicletwo_gfx_vu1 PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+endif()
+
 if(GFX_TESTS)
     enable_testing()
     add_executable(gfx_core_test tests/gfx_core_test.cpp)
@@ -119,5 +156,11 @@ if(GFX_TESTS)
         add_executable(gfx_sdl_demo tests/gfx_sdl_demo.cpp)
         target_link_libraries(gfx_sdl_demo PRIVATE chronicletwo_gfx_sdl)
         set_target_properties(gfx_sdl_demo PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    endif()
+    if(TARGET chronicletwo_gfx_vulkan AND TARGET chronicletwo_gfx_vu1)
+        # Not a test: replays a frame from a PCSX2 save state (see the file).
+        add_executable(gfx_replay tests/gfx_replay.cpp)
+        target_link_libraries(gfx_replay PRIVATE chronicletwo_gfx_vulkan chronicletwo_gfx_vu1)
+        set_target_properties(gfx_replay PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     endif()
 endif()
