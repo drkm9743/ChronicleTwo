@@ -42,12 +42,15 @@ EZBGM) are replaced by:
 - `msin.cpp`: the EE side of the MIDI stream input.
 - `output.cpp`: the SDL 3 audio stream, which also runs the IOP timers.
 
-The command words of EZBGM and EZMIDI, and the layout of the .HD and .SQ
-files, are read from the game's EE code and from Sony's published formats,
-not from the IOP modules themselves; each file's header comment lists what is
-inferred. They are the first thing to check against the real modules and
-data: the stream file formats (.WV, the .VPK packs), the pan convention of
-the banks, the loop markers of the sequences.
+The command words of EZBGM and EZMIDI, what EZBGM answers, and how it finds
+a bare stream name (a member of SOUND.DAT, through SOUND.HD3) are checked
+against the modules on the disc (MODULES/EZBGM.IRX, EZMIDI.IRX, MODHSYN.IRX),
+as are the chunks of an .HD and modhsyn's stereo/mono switch. Still inferred,
+from Sony's published formats, because no bank or sequence has been pulled
+out of DATA.DAT to look at: the fields inside the .HD chunks, the .SQ layout,
+the pan convention, the loop markers, and how the sound-effect messages pick
+their sounds. The .VPK voice packs are not read (the module itself says it
+does not support them yet).
 
 ## Tests
 

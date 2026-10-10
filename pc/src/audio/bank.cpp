@@ -77,7 +77,25 @@ bool Bank::Load(const uint8_t *data, uint32_t size, uint32_t body_address) {
     spu_address = body_address;
     programs = sample_sets = samples = vag_infos = 0;
 
-    // Walk the chunks: "IECS", the reversed type, then the chunk's size.
+    // The Head chunk, right after the Vers chunk, points at the others, as
+    // modhsyn finds them; without one, walk the chunks: "IECS", the reversed
+    // type, then the chunk's size.
+    const uint32_t kHead = 0x10;
+
+    if (size >= kHead + 0x24 && std::memcmp(&header[kHead], "IECSdaeH", 8) == 0) {
+        const char    *types[] = {"gorP", "tesS", "lpmS", "igaV"};
+        uint32_t      *chunks[] = {&programs, &sample_sets, &samples, &vag_infos};
+
+        for (int i = 0; i < 4; i++) {
+            uint32_t offset = U32(kHead + 0x14 + i * 4);
+
+            if (offset != 0xFFFFFFFF && offset + kChunkHeaderSize <= size &&
+                std::memcmp(&header[offset], "IECS", 4) == 0 && std::memcmp(&header[offset + 4], types[i], 4) == 0) {
+                *chunks[i] = offset;
+            }
+        }
+    }
+
     for (uint32_t offset = 0; offset + kChunkHeaderSize <= size;) {
         uint32_t length = U32(offset + 8);
 
@@ -87,13 +105,13 @@ bool Bank::Load(const uint8_t *data, uint32_t size, uint32_t body_address) {
 
         const uint8_t *type = &header[offset + 4];
 
-        if (std::memcmp(type, "gorP", 4) == 0) {
+        if (std::memcmp(type, "gorP", 4) == 0 && programs == 0) {
             programs = offset;
-        } else if (std::memcmp(type, "tesS", 4) == 0) {
+        } else if (std::memcmp(type, "tesS", 4) == 0 && sample_sets == 0) {
             sample_sets = offset;
-        } else if (std::memcmp(type, "lpmS", 4) == 0) {
+        } else if (std::memcmp(type, "lpmS", 4) == 0 && samples == 0) {
             samples = offset;
-        } else if (std::memcmp(type, "igaV", 4) == 0) {
+        } else if (std::memcmp(type, "igaV", 4) == 0 && vag_infos == 0) {
             vag_infos = offset;
         }
 

@@ -40,6 +40,11 @@ void WriteFile(const std::filesystem::path &path, const Bytes &bytes) {
     out.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
 }
 
+Bytes ReadFile(const std::filesystem::path &path) {
+    std::ifstream in(path, std::ios::binary);
+    return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
 Bytes Pattern(size_t size, int multiplier) {
     Bytes bytes(size);
 
@@ -415,8 +420,8 @@ void TestEzBgm() {
 
     const char *name = "cdrom0:\\VOICE\\TEST.WV;1";
     Bgm(0x80, 0);
-    CHECK(Bgm(0x8020, (intptr_t) name) == 0);
-    CHECK((Bgm(0x80D0, 0) & 1) == 0);
+    CHECK(Bgm(0x8020, (intptr_t) name) == 9600);
+    CHECK(Bgm(0x80D0, 0) == 9600);
     Bgm(0x8000, 0x3000);
     Bgm(0x80C0, 0x10);
     Bgm(0x40, 0);
@@ -436,10 +441,39 @@ void TestEzBgm() {
     Bgm(0x30, 0);
     Bgm(0x10, 0);
 
-    // A bare name is looked for anywhere on the disc.
-    const char *bare = "test.wv";
-    CHECK(Bgm(0x8021, (intptr_t) bare) == 0);
-    CHECK((Bgm(0x8021 - 0x8020 + 0x80B0, 0) & ~0xFFF) == 0);
+    // A bare name is a member of SOUND.DAT, found through SOUND.HD3.
+    Wave(pc::DiscPath() / "MEMBER.WAV", 2, 48000, 1000, 3000);
+    Bytes member = ReadFile(pc::DiscPath() / "MEMBER.WAV");
+    Bytes dat(2 * 2048 + member.size());
+    std::memcpy(&dat[2 * 2048], member.data(), member.size());
+    WriteFile(pc::DiscPath() / "SOUND.DAT", dat);
+
+    Bytes hd3(64);
+    Put32(hd3, 0, 32);
+    Put32(hd3, 4, (uint32_t) member.size());
+    Put32(hd3, 8, 2);
+    Put32(hd3, 12, 1);
+    std::memcpy(&hd3[32], "0000010.wav", 11);
+    WriteFile(pc::DiscPath() / "SOUND.HD3", hd3);
+    pc::disc::Unmount();
+
+    const char *bare = "0000010.wav";
+    CHECK(Bgm(0x8021, (intptr_t) bare) == (4000 | 1));
+    Bgm(0x81, (0x7FFF << 16) | 0x7FFF);
+    Bgm(0x51, 0);
+    CHECK((Bgm(0x80B1, 0) & ~0xFFF) == 0x1000);
+    out = Render(100);
+    CHECK(out[2 * 50 + 1] > 2900 && out[2 * 50 + 1] <= 3000);
+
+    // Stopping silences the channel and clears its state.
+    Bgm(0x61, 0);
+    CHECK((Bgm(0x80B1, 0) & ~0xFFF) == 0);
+    out = Render(10);
+    CHECK(out[19] == 0);
+
+    // What is not RIFF WAVE is refused, and a name not on the list is not opened.
+    CHECK(Bgm(0x8021, (intptr_t) "cdrom0:\\SOUND.HD3;1") == -1);
+    CHECK(Bgm(0x8021, (intptr_t) "missing.wav") == 0);
     Bgm(0x31, 0);
 }
 

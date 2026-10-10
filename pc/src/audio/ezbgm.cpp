@@ -2,29 +2,38 @@
 // feeds core n's input, as the IOP module feeds it with block transfers, and
 // the channel's volume is that input's volume (BVOL).
 //
-// The server reads RIFF WAVE files of 16-bit PCM, at any rate and in mono or
-// stereo; anything else is taken as the core input's own format, 16-bit
-// stereo in 512-byte blocks per side. Names are "cdrom0:\\..." paths on the
-// disc, "host0:" files, or bare names, which are looked for anywhere on the
-// disc.
+// What follows is taken from the module on the disc (MODULES/EZBGM.IRX,
+// version 1.2.1). It plays RIFF WAVE files of 16-bit PCM in mono or stereo;
+// here they may be at any rate. A name is found as the module finds it:
+//   "cdrom0:\\..."  a file on the disc (letters made upper case, ";1" added)
+//   "host0:..."     a file in the host folder
+//   a bare name     a member of SOUND.DAT, listed in SOUND.HD3 as 16-byte
+//                   entries {name offset, size, sector, sectors}; the first
+//                   name offset over 16 is how many entries there are
 //
-// The command words come from the game's EE client (sound.cpp). What each
-// reports back is inferred from how the game reads it:
-//   0x8000 INIT      argument: buffer size (sent after OPEN)
+// Commands, the channel in the low four bits:
+//   0x8000 INIT        argument: buffer size; has nothing to do here
 //   0x0010 QUIT
-//   0x8020 OPEN      argument: a 64-byte block holding the name; gives the format
-//   0x80F0 OPEN_PACK argument: the pack's name and the member's (STREAM_PACK_REQUEST)
+//   0x8020 OPEN        argument: a 64-byte block holding the name; gives the size of
+//                      the samples rounded down to 16, with bit 0 set for stereo; 0
+//                      when the file cannot be opened, -1 when it is not RIFF WAVE
+//   0x8A00 OPEN_LOAD   OPEN, then INIT, SETMODE (0x10 for mono) and PRELOAD
+//   0x80F0 OPEN_PACK   argument: the pack's name and the member's (STREAM_PACK_REQUEST)
 //   0x0030 CLOSE
 //   0x0040 PRELOAD
-//   0x0050 START
-//   0x0060 STOP      (also pause)
-//   0x0070 SEEK      back to the start
-//   0x0080 SETVOL    argument: left << 16 | right
-//   0x80B0 GETSTATE  0x1000 while playing, 0x8000 once the file has been read
-//                    to the end, then 0 once its last sample has played
-//   0x80C0 SETMODE   0x10 for mono
-//   0x80D0 GETINFO   bit 0 set for stereo
-//   0x80E0 GETLEVEL  the samples playing now, left << 16 | right
+//   0x0050 START       plays at the volume SETVOL last set
+//   0x0060 STOP        silences the channel; START goes on from where it was
+//   0x0070 SEEK        argument: sector from the start of the file
+//   0x0080 SETVOL      argument: left << 16 | right, kept for START
+//   0x0090 SETVOL_NOW  the same, set at once
+//   0x00A0 MASTERVOL   the core's master volume (MVOL), left << 16 | right
+//   0x00D0 SDINIT      reads SOUND.HD3
+//   0x80B0 GETMODE     the mode SETMODE set, with 0x1000 while playing, 0x8000 once
+//                      the file has been read to the end, and neither once its last
+//                      sample has played or the channel was stopped
+//   0x80C0 SETMODE     argument: the low eight bits of the mode, 0x10 for mono
+//   0x80D0 GETINFO     what OPEN gave
+//   0x80E0 GETLEVEL    the samples playing now, left << 16 | right
 
 #include "../disc/disc.h"
 #include "../host/host_paths.h"
@@ -51,56 +60,171 @@ enum BgmCommand {
     BGM_INIT = 0x8000,
     BGM_QUIT = 0x0010,
     BGM_OPEN = 0x8020,
+    BGM_OPEN_LOAD = 0x8A00,
+    BGM_OPEN_PACK = 0x80F0,
     BGM_CLOSE = 0x0030,
     BGM_PRELOAD = 0x0040,
     BGM_START = 0x0050,
     BGM_STOP = 0x0060,
     BGM_SEEK = 0x0070,
     BGM_SET_VOLUME = 0x0080,
-    BGM_GET_STATE = 0x80B0,
+    BGM_SET_VOLUME_NOW = 0x0090,
+    BGM_SET_MASTER_VOLUME = 0x00A0,
+    BGM_SD_INIT = 0x00D0,
+    BGM_GET_MODE = 0x80B0,
     BGM_SET_MODE = 0x80C0,
     BGM_GET_INFO = 0x80D0,
     BGM_GET_LEVEL = 0x80E0,
-    BGM_OPEN_PACK = 0x80F0,
 };
 
 const int kStatePlaying = 0x1000;
 const int kStateTerminated = 0x8000;
 const int kInfoStereo = 0x0001;
 
+/** Mode bits set by SETMODE. */
+const int kModeMono = 0x0010;
+
 /** How much the IOP module reads ahead of what plays, in frames: two buffers of the default size. */
 const uint32_t kReadAheadFrames = 2 * 0x4000 / 4;
 
-/** Mode bits set by SETMODE. */
-const int kModeMono = 0x0010;
+// libsd entries of a core's volumes (the core is or'd in).
+const uint16_t kMasterVolumeLeft = 0x0980;
+const uint16_t kMasterVolumeRight = 0x0A80;
+const uint16_t kInputVolumeLeft = 0x0F80;
+const uint16_t kInputVolumeRight = 0x1080;
+
+uint32_t Le32(const uint8_t *bytes) {
+    return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | ((uint32_t) bytes[3] << 24);
+}
+
+/** The members of SOUND.DAT, as SOUND.HD3 lists them. */
+class SoundTable {
+public:
+    struct Entry {
+        std::string name;
+        uint32_t    size;
+        uint32_t    sector;
+    };
+
+    /** Reads SOUND.HD3 the first time; false when the disc has no SOUND.DAT. */
+    bool Load() {
+        if (loaded) {
+            return !entries.empty();
+        }
+
+        loaded = true;
+        disc::File header;
+
+        if (!disc::Find("SOUND.HD3", &header) || !disc::Find("SOUND.DAT", &data)) {
+            SDL_Log("EZBGM: the disc has no SOUND.HD3 and SOUND.DAT");
+            return false;
+        }
+
+        std::vector<uint8_t> bytes(header.size);
+
+        if (bytes.size() < 16 || !disc::Read((uint64_t) header.lsn * disc::kSectorSize, bytes.data(), header.size)) {
+            SDL_Log("EZBGM: cannot read SOUND.HD3");
+            return false;
+        }
+
+        uint32_t count = std::min<uint32_t>(Le32(&bytes[0]) / 16, (uint32_t) bytes.size() / 16);
+
+        for (uint32_t i = 0; i < count; i++) {
+            const uint8_t *entry = &bytes[i * 16];
+            uint32_t       name = Le32(entry);
+
+            if (name >= bytes.size()) {
+                continue;
+            }
+
+            const char *text = reinterpret_cast<const char *>(&bytes[name]);
+            entries.push_back({std::string(text, strnlen(text, bytes.size() - name)), Le32(entry + 4), Le32(entry + 8)});
+        }
+
+        return !entries.empty();
+    }
+
+    /** Finds a member by name: exactly, as the module does, or else in either case. */
+    const Entry *Find(const std::string &name) {
+        if (!Load()) {
+            return NULL;
+        }
+
+        for (const Entry &entry : entries) {
+            if (entry.name == name) {
+                return &entry;
+            }
+        }
+
+        for (const Entry &entry : entries) {
+            if (NamesEqualNoCase(entry.name, name)) {
+                return &entry;
+            }
+        }
+
+        return NULL;
+    }
+
+    /** The disc byte where a member starts. */
+    uint64_t Offset(const Entry &entry) const {
+        return ((uint64_t) data.lsn + entry.sector) * disc::kSectorSize;
+    }
+
+private:
+    bool               loaded = false;
+    disc::File         data = {};
+    std::vector<Entry> entries;
+};
+
+SoundTable &GetSoundTable() {
+    static SoundTable table;
+    return table;
+}
 
 /** The bytes of a file, on the disc or the host. */
 class Source {
 public:
     bool Open(const std::string &name) {
         const char *colon = std::strchr(name.c_str(), ':');
-        std::string device = colon != NULL ? name.substr(0, colon - name.c_str()) : std::string();
-        std::string path = colon != NULL ? std::string(colon + 1) : name;
 
-        if (device == "host0" || device == "host") {
-            std::filesystem::path host;
+        if (colon == NULL) {
+            SoundTable              &table = GetSoundTable();
+            const SoundTable::Entry *entry = table.Find(name);
 
-            if (!ResolveNoCase(HostPath(), path, &host)) {
+            if (entry == NULL) {
                 return false;
             }
 
-            stream.reset(new std::ifstream(host, std::ios::binary));
-            std::error_code error;
-            size = (uint64_t) std::filesystem::file_size(host, error);
-            return *stream && !error;
+            base = table.Offset(*entry);
+            size = entry->size;
+            return true;
         }
 
-        if (!disc::Find(path, &file) && (colon != NULL || !disc::FindAnywhere(path, &file))) {
+        std::string device = name.substr(0, colon - name.c_str());
+        std::string path = colon + 1;
+
+        if (device == "cdrom0" || device == "cdrom") {
+            disc::File file;
+
+            if (!disc::Find(path, &file) || file.directory) {
+                return false;
+            }
+
+            base = (uint64_t) file.lsn * disc::kSectorSize;
+            size = file.size;
+            return true;
+        }
+
+        std::filesystem::path host;
+
+        if (!ResolveNoCase(HostPath(), path, &host)) {
             return false;
         }
 
-        size = file.size;
-        return !file.directory;
+        stream.reset(new std::ifstream(host, std::ios::binary));
+        std::error_code error;
+        size = (uint64_t) std::filesystem::file_size(host, error);
+        return *stream && !error;
     }
 
     /** Reads up to `count` bytes from `offset`; gives how many there were. */
@@ -118,7 +242,7 @@ public:
             return (uint32_t) stream->gcount();
         }
 
-        return disc::Read((uint64_t) file.lsn * disc::kSectorSize + offset, buffer, count) ? count : 0;
+        return disc::Read(base + offset, buffer, count) ? count : 0;
     }
 
     uint64_t Size() const {
@@ -127,7 +251,7 @@ public:
 
 private:
     std::unique_ptr<std::ifstream> stream;
-    disc::File                     file = {};
+    uint64_t                       base = 0;
     uint64_t                       size = 0;
 };
 
@@ -135,14 +259,16 @@ private:
 class Channel : public CoreInput {
 public:
     int core = 0;
+    int info = 0;
+    int mode = 0;
 
     void Close() {
+        Stop();
         source.reset();
-        playing = false;
-        state = 0;
+        info = 0;
     }
 
-    /** Opens a file and reads its format; gives the GETINFO word, or 0 when it cannot be read. */
+    /** Opens a file and reads its format; gives what OPEN answers. */
     int Open(const std::string &name) {
         Close();
         std::unique_ptr<Source> opened(new Source());
@@ -153,8 +279,14 @@ public:
         }
 
         source = std::move(opened);
-        ReadFormat(name);
-        Rewind();
+
+        if (!ReadFormat(name)) {
+            source.reset();
+            return -1;
+        }
+
+        Seek(0);
+        info = (int) (data_size & ~(uint64_t) 0xF) | (channels == 2 ? kInfoStereo : 0);
         return info;
     }
 
@@ -165,37 +297,49 @@ public:
         return 0;
     }
 
-    void Rewind() {
-        frame = 0;
+    /** Goes to a sector of the file, which for 0 is the start of its samples. */
+    void Seek(int sector) {
+        uint64_t offset = (uint64_t) std::max(sector, 0) * disc::kSectorSize;
+
+        frame = offset > data_offset ? (offset - data_offset) / (2 * channels) : 0;
         phase = 0;
         fetched = 0;
-        state = playing ? kStatePlaying : 0;
     }
 
     void Start() {
         if (source != nullptr) {
             playing = true;
-
-            if (state == 0) {
-                state = kStatePlaying;
-            }
+            state = kStatePlaying;
+            ApplyVolume(volume);
         }
     }
 
     void Stop() {
         playing = false;
+        state = 0;
+        ApplyVolume(0);
     }
 
-    int State() const {
+    void SetVolume(int value) {
+        volume = value;
+
+        if (playing) {
+            ApplyVolume(volume);
+        }
+    }
+
+    void ApplyVolume(int value) {
+        GetSpu().SetParam((uint16_t) (kInputVolumeLeft | core), (uint16_t) (value >> 16));
+        GetSpu().SetParam((uint16_t) (kInputVolumeRight | core), (uint16_t) value);
+    }
+
+    int Mode() const {
         return state | (mode & 0x0FFF);
     }
 
     int Level() const {
         return ((uint16_t) last_left << 16) | (uint16_t) last_right;
     }
-
-    int info = 0;
-    int mode = 0;
 
     void Next(int16_t *left, int16_t *right) override {
         *left = *right = 0;
@@ -209,53 +353,55 @@ public:
     }
 
 private:
-    /** Reads the WAVE header, if there is one, to learn the layout of the samples. */
-    void ReadFormat(const std::string &name) {
+    /** Reads the WAVE header; false when the file is not RIFF WAVE. */
+    bool ReadFormat(const std::string &name) {
         uint8_t header[12];
 
-        channels = 2;
-        rate = kSampleRate;
-        data_offset = 0;
-        data_size = source->Size();
-        interleaved = true;
-
-        if (source->Read(0, header, 12) == 12 && std::memcmp(header, "RIFF", 4) == 0 &&
-            std::memcmp(header + 8, "WAVE", 4) == 0) {
-            uint64_t offset = 12;
-            uint8_t  chunk[8];
-            bool     pcm = false;
-
-            while (source->Read(offset, chunk, 8) == 8) {
-                uint32_t length = chunk[4] | (chunk[5] << 8) | (chunk[6] << 16) | ((uint32_t) chunk[7] << 24);
-
-                if (std::memcmp(chunk, "fmt ", 4) == 0) {
-                    uint8_t format[16] = {};
-                    source->Read(offset + 8, format, 16);
-                    pcm = (format[0] | (format[1] << 8)) == 1 && (format[14] | (format[15] << 8)) == 16;
-                    channels = format[2] | (format[3] << 8);
-                    rate = format[4] | (format[5] << 8) | (format[6] << 16) | ((uint32_t) format[7] << 24);
-                } else if (std::memcmp(chunk, "data", 4) == 0) {
-                    data_offset = offset + 8;
-                    data_size = std::min<uint64_t>(length, source->Size() - data_offset);
-                    break;
-                }
-
-                offset += 8 + length + (length & 1);
-            }
-
-            if (!pcm || channels < 1 || channels > 2 || rate == 0) {
-                SDL_Log("EZBGM: %s is a WAVE file but not 16-bit PCM in mono or stereo", name.c_str());
-                channels = 2;
-                rate = kSampleRate;
-            }
-
-            interleaved = false;
-        } else {
-            SDL_Log("EZBGM: %s has no WAVE header; playing it as 16-bit stereo in 512-byte blocks", name.c_str());
+        if (source->Read(0, header, 12) != 12 || std::memcmp(header, "RIFF", 4) != 0 ||
+            std::memcmp(header + 8, "WAVE", 4) != 0) {
+            SDL_Log("EZBGM: %s is not a RIFF WAVE file", name.c_str());
+            return false;
         }
 
-        info = channels == 2 ? kInfoStereo : 0;
+        uint64_t offset = 12;
+        uint8_t  chunk[8];
+        bool     pcm = false;
+
+        channels = 0;
+        data_offset = 0;
+        data_size = 0;
+
+        while (source->Read(offset, chunk, 8) == 8) {
+            uint32_t length = Le32(chunk + 4);
+
+            if (std::memcmp(chunk, "fmt ", 4) == 0) {
+                uint8_t format[16] = {};
+                source->Read(offset + 8, format, 16);
+                pcm = (format[0] | (format[1] << 8)) == 1 && (format[14] | (format[15] << 8)) == 16;
+                channels = format[2] | (format[3] << 8);
+                rate = Le32(format + 4);
+            } else if (std::memcmp(chunk, "data", 4) == 0) {
+                data_offset = offset + 8;
+                data_size = std::min<uint64_t>(length, source->Size() - std::min(data_offset, source->Size()));
+                break;
+            }
+
+            offset += 8 + length + (length & 1);
+        }
+
+        if (data_offset == 0) {
+            SDL_Log("EZBGM: %s has no samples", name.c_str());
+            return false;
+        }
+
+        if (!pcm || channels < 1 || channels > 2 || rate == 0) {
+            SDL_Log("EZBGM: %s is not 16-bit PCM in mono or stereo; playing it as 48 kHz stereo", name.c_str());
+            channels = 2;
+            rate = kSampleRate;
+        }
+
         total_frames = data_size / (2 * channels);
+        return true;
     }
 
     /** The source frame `index`, or false past the end. */
@@ -264,28 +410,14 @@ private:
             return false;
         }
 
-        uint64_t offset;
+        uint64_t offset = data_offset + index * 2 * channels;
         int16_t  samples[2] = {};
 
-        if (interleaved) {
-            // 256 left samples, then 256 right, per 1 KB block.
-            uint64_t block = index / 256;
-            uint64_t within = index % 256;
-            offset = data_offset + block * 1024 + within * 2;
-            Fetch(offset, &samples[0]);
-            Fetch(offset + 512, &samples[1]);
+        Fetch(offset, &samples[0]);
+
+        if (channels == 2 && !(mode & kModeMono)) {
+            Fetch(offset + 2, &samples[1]);
         } else {
-            offset = data_offset + index * 2 * channels;
-            Fetch(offset, &samples[0]);
-
-            if (channels == 2) {
-                Fetch(offset + 2, &samples[1]);
-            } else {
-                samples[1] = samples[0];
-            }
-        }
-
-        if (mode & kModeMono) {
             samples[1] = samples[0];
         }
 
@@ -313,8 +445,8 @@ private:
         int16_t a_left, a_right, b_left, b_right;
 
         if (!SourceFrame(frame, &a_left, &a_right)) {
-            playing = false;
-            state = 0;
+            // The module stops a channel by itself once its last sample has played.
+            Stop();
             return;
         }
 
@@ -344,12 +476,12 @@ private:
     std::unique_ptr<Source> source;
     bool                    playing = false;
     int                     state = 0;
+    int                     volume = 0;
     int                     channels = 2;
     uint32_t                rate = kSampleRate;
     uint64_t                data_offset = 0;
     uint64_t                data_size = 0;
     uint64_t                total_frames = 0;
-    bool                    interleaved = true;
     uint64_t                frame = 0;
     uint32_t                phase = 0;
     uint8_t                 cache[0x4000];
@@ -398,7 +530,8 @@ void *EzBgmServer(unsigned int function, void *data, int size) {
 
     switch (function & 0xFFF0) {
         case BGM_INIT:
-            // Sent after OPEN, with the size of the buffers to read through; reads here are direct.
+        case BGM_PRELOAD:
+            // Reads here are direct, so there are no buffers to set up or fill.
             break;
         case BGM_QUIT:
         case BGM_CLOSE:
@@ -407,10 +540,11 @@ void *EzBgmServer(unsigned int function, void *data, int size) {
         case BGM_OPEN:
             result = channel.Open(NameFrom(data, size, 0, 64));
             break;
+        case BGM_OPEN_LOAD:
+            channel.mode = (channel.mode & ~0xFF) | ((channel.Open(NameFrom(data, size, 0, 64)) & kInfoStereo) ? 0 : kModeMono);
+            break;
         case BGM_OPEN_PACK:
             result = channel.OpenPack(NameFrom(data, size, 0, 52), NameFrom(data, size, 52, 12));
-            break;
-        case BGM_PRELOAD:
             break;
         case BGM_START:
             channel.Start();
@@ -419,17 +553,26 @@ void *EzBgmServer(unsigned int function, void *data, int size) {
             channel.Stop();
             break;
         case BGM_SEEK:
-            channel.Rewind();
+            channel.Seek(argument);
             break;
         case BGM_SET_VOLUME:
-            GetSpu().SetParam((uint16_t) (0x0F80 | channel.core), (uint16_t) (argument >> 16));
-            GetSpu().SetParam((uint16_t) (0x1080 | channel.core), (uint16_t) argument);
+            channel.SetVolume(argument);
             break;
-        case BGM_GET_STATE:
-            result = channel.State();
+        case BGM_SET_VOLUME_NOW:
+            channel.ApplyVolume(argument);
+            break;
+        case BGM_SET_MASTER_VOLUME:
+            GetSpu().SetParam((uint16_t) (kMasterVolumeLeft | channel.core), (uint16_t) (argument >> 16));
+            GetSpu().SetParam((uint16_t) (kMasterVolumeRight | channel.core), (uint16_t) argument);
+            break;
+        case BGM_SD_INIT:
+            GetSoundTable().Load();
+            break;
+        case BGM_GET_MODE:
+            result = channel.Mode();
             break;
         case BGM_SET_MODE:
-            channel.mode = argument;
+            channel.mode = (channel.mode & ~0xFF) | (argument & 0xFF);
             break;
         case BGM_GET_INFO:
             result = channel.info;
@@ -438,7 +581,7 @@ void *EzBgmServer(unsigned int function, void *data, int size) {
             result = channel.Level();
             break;
         default:
-            SDL_Log("EZBGM: command 0x%X is not implemented", function);
+            SDL_Log("EZBGM: unknown command 0x%X", function);
             break;
     }
 

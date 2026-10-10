@@ -3,20 +3,24 @@
 // and, for ports 7-15, a MIDI stream input buffer the game fills with sound
 // effect messages (msin.cpp) and copies to IOP memory once a frame.
 //
-// The command words come from the game's EE client (sound.cpp); the port is
-// in the low four bits. What each does is inferred from how the game uses it:
+// The command words are the ones MODULES/EZMIDI.IRX on the disc answers;
+// the port is in the low four bits. That module runs Sony's modhsyn and
+// modmidi with a 240 Hz tick:
 //   0x8010 INIT      argument: size of the stream input buffers; gives their IOP address
 //   0x80F0 QUIT
 //   0x0000 PLAY      plays the port's sequence from where it is
-//   0x0020 STOP      stops it and releases the port's voices
-//   0x0030 REWIND    puts the sequence back to its start
+//   0x0020 STOP      stops it (here its voices are released too)
+//   0x0030 REWIND    argument: where in the sequence to go; the game only sends 0
 //   0x0040 SEQUENCE  argument: IOP address of a .SQ
 //   0x9050 BANK      argument: a block holding the bank's number, its .HD's IOP
 //                    address and the sound memory address of its .BD
-//   0x00A0 PRIORITY  argument: 0x30nn, nn the port's priority for voices
-//   0x00B0 VOLUME    argument: 0-256
-//   0x00C0 STEREO    argument: 1 for stereo, 0 for mono (taken from the options menu,
-//                    which sends 1 for its first choice)
+//   0x00A0 PRIORITY  argument: the port's priority for voices, in the low byte
+//   0x00B0 VOLUME    argument: 0-256, 256 full
+//   0x00C0 STEREO    argument: the synthesizer's output mode, 1 stereo and 0
+//                    mono (modhsyn keeps every voice centred for 0)
+// The module also answers status, volume and voice-count queries and BD
+// transfers (0x80D0, 0x80E0, 0x8090, 0x9060-0x9080, 0x7000, 0x8100), which
+// the game never sends.
 
 #include "../iop/iop.h"
 #include "sequence.h"
