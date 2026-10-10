@@ -10,7 +10,8 @@
 #   chronicletwo_game (default)       every game unit, as a static library
 #   chronicletwo_platform (default)   the PS2 SDK libraries implemented on SDL 3
 #
-# Only libpad is implemented so far, so nothing links the game yet.
+# libpad, the disc, the memory cards, SIF and sound are implemented; the rest
+# of the SDK is not, so nothing links the game yet.
 #
 # SDL is an installed SDL3 of exactly SDL_VERSION when CMake finds one, and
 # otherwise built from its release, downloaded at configure time.
@@ -95,9 +96,15 @@ endif()
 add_library(chronicletwo_platform STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp)
 
+# The disc, the memory cards, SIF and sound (pc/src/README.md).
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/platform_sources.cmake)
+target_sources(chronicletwo_platform PRIVATE ${PLATFORM_IO_SOURCES})
+
 # The platform code is ordinary host code: it sees the host's headers, and the
-# SDK headers only for the declarations it implements.
-target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce)
+# SDK headers only for the declarations it implements (with the game's
+# types.h and common.h they include, as a PC build sees them).
+target_include_directories(chronicletwo_platform PRIVATE ${GAME_INCLUDE_DIR}/sce ${GAME_INCLUDE_DIR})
+target_compile_definitions(chronicletwo_platform PRIVATE PLATFORM_PC)
 target_link_libraries(chronicletwo_platform PUBLIC SDL3::SDL3)
 set_target_properties(chronicletwo_platform PROPERTIES
     CXX_STANDARD 17
