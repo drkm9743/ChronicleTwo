@@ -89,15 +89,29 @@ extern mgCMemory SystemSeStack;
 /**
  * Main memory arena for game resources.
  */
+#ifdef PLATFORM_PC
+/* The PC's structures outgrow the EE's (8-byte pointers), so its memories
+ * are twice the size; offsets into them stay as retail has them. */
+u_long128 main_buffer[0x1A0000 * 2];
+#else
 u_long128 main_buffer[0x1A0000];
+#endif
 /**
  * Memory backing the system sound-effect loader.
  */
+#ifdef PLATFORM_PC
+static u_long128 SystemSeBuff[400 * 2];
+#else
 static u_long128 SystemSeBuff[400];
+#endif
 /**
  * Memory backing configuration and villager data.
  */
+#ifdef PLATFORM_PC
+static u_long128 InfoBuff[5000 * 2];
+#else
 static u_long128 InfoBuff[5000];
+#endif
 static void      MenuInit(INIT_LOOP_ARG arg);
 static void      MenuExit();
 static int       MenuLoop();
@@ -488,7 +502,11 @@ void MainLoop() {
     int               alignment;
 
     memory = GetMainStack();
+#ifdef PLATFORM_PC
+    memory->stSetBuffer(main_buffer, 0x1A0000 * 2);
+#else
     memory->stSetBuffer(main_buffer, 0x1A0000);
+#endif
     memory->stack_used = 0;
     memory->lock = 0;
     SaveData.Initialize();
@@ -540,7 +558,11 @@ void MainLoop() {
     LoadFontTblBin();
     LoadFontTex2Img();
     LoadNPCCfg();
+#ifdef PLATFORM_PC
+    InfoStack.stSetBuffer(InfoBuff, 5000 * 2);
+#else
     InfoStack.stSetBuffer(InfoBuff, 5000);
+#endif
     LoadGameInfo(&InfoStack);
     InitPauseData();
     InitSaveData();
@@ -558,7 +580,11 @@ void MainLoop() {
     sndInitMngr();
     MainScene.InitSnd();
     SetCurrentDir(NULL);
+#ifdef PLATFORM_PC
+    SystemSeStack.stSetBuffer(SystemSeBuff, 400 * 2);
+#else
     SystemSeStack.stSetBuffer(SystemSeBuff, 400);
+#endif
     SystemSeStack.stack_used = 0;
     SystemSeStack.lock = 0;
     read_memory = GetMainStack();
@@ -600,7 +626,11 @@ void MainLoop() {
     while (1) {
         if (LoopNo == LOOP_TITLE || OmakeFlag != 0) {
             SubGameSaveData = (CSubGameData *) main_buffer;
+#ifdef PLATFORM_PC
+            memory->stSetBuffer(main_buffer + 5000, 0x1A0000 * 2 - 5000);
+#else
             memory->stSetBuffer(main_buffer + 5000, 0x19EC78);
+#endif
             memory->stack_used = 0;
             memory->lock = 0;
         }

@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace pc {
 
@@ -31,6 +32,9 @@ public:
               const gfx::GsClut &clut) override {
         draws_++;
         vertices_ += count;
+        if (state.tme) {
+            textured_++;
+        }
         last_frame_ = state.frame;
         last_state_ = state;
         if (count > 0) {
@@ -94,8 +98,12 @@ private:
         if (inner) {
             inner->SyncToMemory(fbp, fbw, psm, gfx::GsRect{0, 0, w, h});
         }
-        std::fprintf(stderr, "trace: display circuit %d bp %u bw %u psm %u %dx%d: %d of %d sampled pixels not black\n",
-                     circuit + 1, fbp, fbw, psm, w, h, CountLit(fbp, fbw, psm, w, h), ((w + 1) / 2) * ((h + 1) / 2));
+        std::fprintf(stderr,
+                     "trace: display circuit %d bp %u bw %u psm %u %dx%d: %d of %d sampled pixels not black; "
+                     "%llu textured draws\n",
+                     circuit + 1, fbp, fbw, psm, w, h, CountLit(fbp, fbw, psm, w, h), ((w + 1) / 2) * ((h + 1) / 2),
+                     (unsigned long long) textured_);
+        Dump("display", fbp, fbw, psm, w, h);
         // The buffer drawn last, and how.
         uint32_t dbp = uint32_t(last_frame_ & 0x1FF) * 32, dbw = uint32_t((last_frame_ >> 16) & 0x3F);
         uint32_t dpsm = uint32_t((last_frame_ >> 24) & 0x3F);
@@ -105,6 +113,7 @@ private:
             }
             std::fprintf(stderr, "trace: drawn bp %u bw %u psm %u: %d sampled pixels not black\n", dbp, dbw, dpsm,
                          CountLit(dbp, dbw, dpsm, w, h));
+            Dump("drawn", dbp, dbw, dpsm, w, h);
         }
         const gfx::GsDrawState &d = last_state_;
         const gfx::GsVertex    &v = last_vertex_;
@@ -114,6 +123,48 @@ private:
                      d.topology, d.tme, d.abe, d.fst, (unsigned long long) d.test, (unsigned long long) d.alpha,
                      (unsigned long long) d.scissor, (unsigned long long) d.zbuf, (unsigned long long) d.tex0, v.x, v.y,
                      v.z, v.s, v.t, v.q, v.rgba);
+    }
+
+    /** CHRONICLETWO_TRACE_DUMP=<folder>: the buffer as a BMP there, once a second. It stays on this PC. */
+    void Dump(const char *what, uint32_t bp, uint32_t bw, uint32_t psm, int w, int h) {
+        const char *folder = std::getenv("CHRONICLETWO_TRACE_DUMP");
+        if (folder == nullptr) {
+            return;
+        }
+        char path[1024];
+        std::snprintf(path, sizeof(path), "%s/%s_%05llu.bmp", folder, what, (unsigned long long) vsyncs_);
+        FILE *f = std::fopen(path, "wb");
+        if (f == nullptr) {
+            return;
+        }
+        uint32_t row = uint32_t(w) * 3 + 3 & ~3u, image = row * uint32_t(h);
+        uint8_t  header[54] = {'B', 'M'};
+        auto     put32 = [&](int at, uint32_t v) {
+            for (int i = 0; i < 4; i++) {
+                header[at + i] = uint8_t(v >> (8 * i));
+            }
+        };
+        put32(2, 54 + image);
+        put32(10, 54);
+        put32(14, 40);
+        put32(18, uint32_t(w));
+        put32(22, uint32_t(h));
+        header[26] = 1;
+        header[28] = 24;
+        put32(34, image);
+        std::fwrite(header, 1, sizeof(header), f);
+        gfx::GsMemory       &memory = gfx::GetMachine().memory;
+        std::vector<uint8_t> line(row);
+        for (int y = h - 1; y >= 0; y--) {
+            for (int x = 0; x < w; x++) {
+                uint32_t c = memory.ReadColor32(psm, bp, bw, x, y);
+                line[x * 3 + 0] = uint8_t(c >> 16);
+                line[x * 3 + 1] = uint8_t(c >> 8);
+                line[x * 3 + 2] = uint8_t(c);
+            }
+            std::fwrite(line.data(), 1, row, f);
+        }
+        std::fclose(f);
     }
 
     static int CountLit(uint32_t bp, uint32_t bw, uint32_t psm, int w, int h) {
@@ -130,6 +181,7 @@ private:
     }
 
     uint64_t         vsyncs_ = 0, draws_ = 0, vertices_ = 0, uploads_ = 0, last_frame_ = 0;
+    uint64_t         textured_ = 0;
     gfx::GsDrawState last_state_ = {};
     gfx::GsVertex    last_vertex_ = {};
 };
