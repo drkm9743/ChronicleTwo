@@ -356,7 +356,11 @@ int CScene::LoadMapFromMemory(int map_no, int step, SCN_LOADMAP_INFO2 *info) {
         CMap                        *map;
         SCN_LOADMAP_INFO2::MapFiles *files;
         int                          add_block_num;
+#ifdef PLATFORM_PC
+        pcHwRead32(timer0_count);
+#else
         *(volatile u_int *) timer0_count;
+#endif
         map = GetMap(map_no);
         files = &info->files[0];
         add_files = NULL;
