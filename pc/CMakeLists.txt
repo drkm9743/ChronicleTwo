@@ -11,8 +11,8 @@
 #   chronicletwo_platform (default)   the PS2 SDK libraries implemented on SDL 3
 #                                     and the renderer in gfx/
 #
-# libpad, libgraph, libdma and libpkt are implemented so far, so nothing links
-# the game yet.
+# libpad, libgraph, libdma, libpkt, the disc, the memory cards, SIF and sound
+# are implemented; the rest of the SDK is not, so nothing links the game yet.
 #
 # SDL is an installed SDL3 of exactly SDL_VERSION when CMake finds one, and
 # otherwise built from its release, downloaded at configure time.
@@ -110,6 +110,10 @@ add_library(chronicletwo_platform STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libgraph.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpad.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sce/libpkt.cpp)
+
+# The disc, the memory cards, SIF and sound (pc/src/README.md).
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/platform_sources.cmake)
+target_sources(chronicletwo_platform PRIVATE ${PLATFORM_IO_SOURCES})
 
 # The platform code is ordinary host code: it sees the host's headers, and the
 # SDK headers only for the declarations it implements (those pull in the
