@@ -19,6 +19,8 @@ void *MG_ADDRESS_CHECK(void *address, char *where) {
 /* Placement new is in pc/src/runtime/pc_memory.cpp: it widens the allocation
  * it is handed when the PC's type is larger than the quadwords retail asked for. */
 void pcNoteAlloc(mgCMemory *memory, u_long128 *data, int size);
+/* Says which memory ran out and where it was called from, for a debugger to look up. */
+void pcStackOver(mgCMemory *memory, void *caller);
 #else
 void *operator new(size_t size, u_long128 *buffer) {
     return buffer;
@@ -200,6 +202,9 @@ u_long128 *mgCMemory::stAlloc(int size) {
 
     if (new_used >= old_capacity) {
         printf("stack over %d/%d at %s\n", new_used, old_capacity, this);
+#ifdef PLATFORM_PC
+        pcStackOver(this, __builtin_return_address(0));
+#endif
         return 0;
     }
 
@@ -226,6 +231,9 @@ u_long128 *mgCMemory::Alloc(int size) {
 
     if (new_used >= old_capacity) {
         printf("stack over %d/%d at %s\n", new_used, old_capacity, this);
+#ifdef PLATFORM_PC
+        pcStackOver(this, __builtin_return_address(0));
+#endif
         return 0;
     }
 

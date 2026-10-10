@@ -51,6 +51,11 @@ void pcNoteAlloc(mgCMemory *memory, u_long128 *data, int size) {
     last.size = size;
 }
 
+void pcStackOver(mgCMemory *memory, void *caller) {
+    printf("pc: memory %p (\"%s\", buffer %p, %d quadwords) is full; Alloc called from %p\n", (void *) memory,
+           memory->name, (void *) memory->stack, memory->stack_size, caller);
+}
+
 void *operator new(size_t size, u_long128 *buffer) {
     Widen(buffer, size);
     return buffer;

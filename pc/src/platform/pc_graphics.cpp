@@ -6,6 +6,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -52,6 +53,9 @@ public:
         }
     }
     void VSync(const gfx::GsDisplayState &display) override {
+        if (vsyncs_ % 50 == 0) {
+            DescribeDisplay(display);
+        }
         if (vsyncs_++ % 50 == 0) {
             std::fprintf(stderr,
                          "trace: vsync %llu draws %llu vertices %llu uploads %llu last FRAME %016llx | dma vif1 %llu "
@@ -70,6 +74,35 @@ public:
     }
 
 private:
+    /** Writes the displayed buffer back to GS memory and counts the pixels that are not black. */
+    void DescribeDisplay(const gfx::GsDisplayState &display) {
+        bool     en1 = display.pmode & 1, en2 = (display.pmode >> 1) & 1;
+        int      circuit = (en2 || !en1) ? 1 : 0;
+        uint64_t dispfb = display.dispfb[circuit], disp = display.display[circuit];
+        uint32_t fbp = uint32_t(dispfb & 0x1FF) * 32, fbw = uint32_t((dispfb >> 9) & 0x3F);
+        uint32_t psm = uint32_t((dispfb >> 15) & 0x1F);
+        int      magh = int((disp >> 23) & 0xF) + 1, magv = int((disp >> 27) & 3) + 1;
+        int      w = std::min(int(((disp >> 32) & 0xFFF) + 1) / magh, 2048);
+        int      h = std::min(int(((disp >> 44) & 0x7FF) + 1) / magv, 2048);
+        if (fbw == 0 || w <= 0 || h <= 0) {
+            return;
+        }
+        if (inner) {
+            inner->SyncToMemory(fbp, fbw, psm, gfx::GsRect{0, 0, w, h});
+        }
+        gfx::GsMemory &memory = gfx::GetMachine().memory;
+        int            lit = 0;
+        for (int y = 0; y < h; y += 2) {
+            for (int x = 0; x < w; x += 2) {
+                if (memory.ReadColor32(psm, fbp, fbw, x, y) & 0xFFFFFF) {
+                    lit++;
+                }
+            }
+        }
+        std::fprintf(stderr, "trace: display circuit %d bp %u bw %u psm %u %dx%d: %d of %d sampled pixels not black\n",
+                     circuit + 1, fbp, fbw, psm, w, h, lit, ((w + 1) / 2) * ((h + 1) / 2));
+    }
+
     uint64_t vsyncs_ = 0, draws_ = 0, vertices_ = 0, uploads_ = 0, last_frame_ = 0;
 };
 
