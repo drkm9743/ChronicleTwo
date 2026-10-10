@@ -56,7 +56,11 @@ enum FILE_CACHE_TYPE {
 struct DATA_HEADER {
     union {
         int   name_offset; /**< Offset of the file name from the start of the index, as stored on the disc. */
+#ifdef PLATFORM_PC
+        ptr32<char> name;
+#else
         char *name;        /**< File name, once the index has been loaded. */
+#endif
     };
 
     int size;   /**< File size in bytes. */

@@ -24,6 +24,7 @@ u_long pcHwRead64(u_int address);
 void   pcHwWrite64(u_int address, u_long value);
 #ifdef __cplusplus
 }
+#include "pc_ptr32.h"
 #endif
 #endif
 

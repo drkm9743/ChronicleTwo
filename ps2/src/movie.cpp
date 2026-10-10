@@ -197,6 +197,16 @@ void CMovie::Load(char *name, mgCMemory **memory, int width, int height, bool wi
     u8 *area __attribute__((aligned(64)));
     int read_size;
 
+#ifdef PLATFORM_PC
+    // The PC has no IPU to decode with yet: a movie loads as one that has
+    // already played to its end (see Play and EndCheck).
+    is_playing = 0;
+    isStarted = 1;
+    writerest = 0;
+    readrest = 0;
+    return;
+#endif
+
     isWithAudio = with_audio;
     isStrFileInit = 0;
     isStarted = 0;
@@ -288,6 +298,11 @@ void CMovie::Load(char *name, mgCMemory *memory, int width, int height, bool wit
 void CMovie::Play(char *path) {
     ThreadParam param;
 
+#ifdef PLATFORM_PC
+    TexName = path;
+    return;
+#endif
+
     if (is_playing == 0) {
         TexName = path;
         param.entry = defMain;
@@ -337,6 +352,11 @@ void CMovie::SwitchThread() {
 }
 
 void CMovie::Term() {
+#ifdef PLATFORM_PC
+    is_playing = 0;
+    return;
+#endif
+
     if (is_playing != 0) {
         videoDecFlush(&videoDec);
         switchThread();
