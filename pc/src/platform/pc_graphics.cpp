@@ -13,7 +13,65 @@
 
 namespace pc {
 
+extern uint64_t dma_chains_sent[10];
+
 namespace {
+
+/**
+ * CHRONICLETWO_TRACE: passes everything on to the real renderer (or none)
+ * and once a second prints what reached the GS, so a black window can be
+ * told apart from a game that draws nothing.
+ */
+class TraceRenderer : public gfx::IGsRenderer {
+public:
+    gfx::IGsRenderer *inner = nullptr;
+
+    void Draw(const gfx::GsDrawState &state, const gfx::GsVertex *vertices, size_t count,
+              const gfx::GsClut &clut) override {
+        draws_++;
+        vertices_ += count;
+        last_frame_ = state.frame;
+        if (inner) {
+            inner->Draw(state, vertices, count, clut);
+        }
+    }
+    void SyncToMemory(uint32_t bp, uint32_t bw, uint32_t psm, const gfx::GsRect &rect) override {
+        if (inner) {
+            inner->SyncToMemory(bp, bw, psm, rect);
+        }
+    }
+    void PrepareWrite(uint32_t bp, uint32_t bw, uint32_t psm, const gfx::GsRect &rect) override {
+        if (inner) {
+            inner->PrepareWrite(bp, bw, psm, rect);
+        }
+    }
+    void MemoryWritten(uint32_t bp, uint32_t bw, uint32_t psm, const gfx::GsRect &rect) override {
+        uploads_++;
+        if (inner) {
+            inner->MemoryWritten(bp, bw, psm, rect);
+        }
+    }
+    void VSync(const gfx::GsDisplayState &display) override {
+        if (vsyncs_++ % 50 == 0) {
+            std::fprintf(stderr,
+                         "trace: vsync %llu draws %llu vertices %llu uploads %llu last FRAME %016llx | dma vif1 %llu "
+                         "gif %llu spr %llu | PMODE %llx DISPFB1 %016llx DISPLAY1 %016llx DISPFB2 %016llx "
+                         "DISPLAY2 %016llx\n",
+                         (unsigned long long) vsyncs_, (unsigned long long) draws_, (unsigned long long) vertices_,
+                         (unsigned long long) uploads_, (unsigned long long) last_frame_,
+                         (unsigned long long) dma_chains_sent[1], (unsigned long long) dma_chains_sent[2],
+                         (unsigned long long) dma_chains_sent[8], (unsigned long long) display.pmode,
+                         (unsigned long long) display.dispfb[0], (unsigned long long) display.display[0],
+                         (unsigned long long) display.dispfb[1], (unsigned long long) display.display[1]);
+        }
+        if (inner) {
+            inner->VSync(display);
+        }
+    }
+
+private:
+    uint64_t vsyncs_ = 0, draws_ = 0, vertices_ = 0, uploads_ = 0, last_frame_ = 0;
+};
 
 /** The window is 2x the PS2's 640x448 frame buffer. */
 const int kWindowWidth = 1280;
@@ -23,6 +81,8 @@ struct Graphics {
     gfx::SdlVulkanWindow                 window;
     gfx::VulkanContext                   context;
     std::unique_ptr<gfx::VulkanRenderer> renderer;
+    TraceRenderer                        trace;
+    bool                                 tracing = false;
     bool                                 started = false;
     Uint64                               field_ns = 20000000; // PAL
     Uint64                               next_field = 0;
@@ -67,7 +127,8 @@ bool StartRenderer(Graphics &g) {
         g.window.Close();
         return false;
     }
-    gfx::GetMachine().SetRenderer(g.renderer.get());
+    g.trace.inner = g.renderer.get();
+    gfx::GetMachine().SetRenderer(g.tracing ? static_cast<gfx::IGsRenderer *>(&g.trace) : g.renderer.get());
     return true;
 }
 
@@ -80,8 +141,12 @@ void GraphicsStart(bool pal) {
         return;
     }
     g.started = true;
+    g.tracing = std::getenv("CHRONICLETWO_TRACE") != nullptr;
     if (!StartRenderer(g)) {
         std::fprintf(stderr, "graphics: running without a renderer\n");
+        if (g.tracing) {
+            gfx::GetMachine().SetRenderer(&g.trace);
+        }
     }
     g.next_field = SDL_GetTicksNS() + g.field_ns;
 }

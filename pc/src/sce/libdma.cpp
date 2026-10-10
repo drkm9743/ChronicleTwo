@@ -33,6 +33,11 @@ uint8_t *Address(uint32_t addr, bool scratchpad) {
 
 } // namespace
 
+namespace pc {
+/** Chains sent on each channel, for CHRONICLETWO_TRACE (pc_graphics.cpp). */
+uint64_t dma_chains_sent[10];
+} // namespace pc
+
 extern "C" {
 
 sceDmaChan *sceDmaGetChan(int channel) {
@@ -44,6 +49,7 @@ int sceDmaSend(sceDmaChan *chan, void *data) {
     if (channel < 0) {
         return -1;
     }
+    pc::dma_chains_sent[channel]++;
     // A source-chain transfer starting at the tag `data`.
     gfx::GetMachine().dma.SendChain(channel, data, chan->chcr.TTE != 0);
     chan->chcr.STR = 0;
