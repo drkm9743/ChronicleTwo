@@ -406,10 +406,18 @@ int CScriptInterpreter::GetArg() {
             quotes++;
         }
 
+#ifdef PLATFORM_PC
+        /* An empty argument reads text[-1], as the EE's 32-bit wrap does. */
+        if (text[(int) length - 1] == '"') {
+            text[(int) length - 1] = '\0';
+            quotes++;
+        }
+#else
         if (text[(u32) length - 1] == '"') {
             text[(u32) length - 1] = '\0';
             quotes++;
         }
+#endif
 
         for (; text[i] != '\0'; i++) {
             char ch = text[i];
