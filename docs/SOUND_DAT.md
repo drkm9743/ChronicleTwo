@@ -5,13 +5,13 @@ how `EZBGM.IRX` finds and plays an entry. Sources: the PAL disc files
 (`SOUND.HD3` 86,848 bytes, `SOUND.DAT` 969,644,032 bytes, `DATA.HD3`
 354,912 bytes) parsed with a throwaway script, and `MODULES/EZBGM.IRX`
 (it keeps its symbols) read with the container's MIPS objdump. Nothing is
-copied from the module. `(unchecked)` marks a statement that the disc files
-do not settle, because no `SOUND.DAT` entry was read.
+copied from the module. Every `SOUND.DAT` entry's chunk list and `fmt `
+block was also read, with a script run on the PAL disc (section 3).
 
 **The short answer.** `SOUND.HD3` is a flat array of 16-byte records
 followed by the name strings. `SOUND.DAT` is the files laid end to end on
-sector boundaries. Every entry is a `.wav`: a RIFF WAVE file of 16-bit PCM
-that the module streams straight into an SPU2 core input. There are no VAG
+sector boundaries. Every entry is a `.wav`: a RIFF WAVE file of mono 16-bit
+PCM at 48 kHz that the module streams straight into an SPU2 core input. There are no VAG
 blocks, no ADPCM and no stream header of the module's own. The section 3.8
 expectation ("interleaved VAG blocks with a header") does not hold, so
 WP5.4 needs a PCM WAVE channel, not a streamed-VAG player.
@@ -89,8 +89,22 @@ The samples are then sent with `sceSdBlockTrans` into the core's input:
 left/right blocks the input expects, and `_BgmRaw2SpuMono` (0x0270)
 duplicates a mono stream into both. The core input plays 16-bit PCM at
 48 kHz, so retail plays every entry as 48 kHz s16le whatever its header says.
-Whether all 3,101 headers say 48 kHz and 16-bit is **(unchecked)**. A quick
-check is to read the `fmt ` chunk of each extracted entry.
+
+What the 3,101 entries hold, read from each one's chunk list:
+
+| Entries | `fmt ` | Chunks, in order |
+|---|---|---|
+| 3,025 | PCM (tag 1), 1 channel, 48,000 Hz, 16-bit | `bext`, `fmt `, `minf`, `elmo`, `data`, `regn`, `ovwf`, `umid` |
+| 67 | the same | `fmt `, `data`, `LIST` |
+| 6 | the same | `fmt `, `data` |
+| 2 | the same | `fmt `, `data`, `bext`, `minf`, `elmo`, `regn`, `ovwf`, `umid` |
+| 1 | the same | `fmt `, `data`, `LIST`, `bext`, `minf`, `elmo`, `regn`, `ovwf`, `umid` |
+
+All of them are mono 48 kHz 16-bit PCM, and every `data` chunk fits inside
+its record's size. The other chunks are authoring-tool metadata (Broadcast
+WAVE `bext` and the editor's own chunks). A reader has to walk the chunk
+list rather than assume `data` at offset 44: in most entries `bext` comes
+first, and the module skips it the same way.
 
 OPEN answers `(data size & ~0xF) | stereo`, with bit 0 set for stereo, and
 0 when the file cannot be opened. `GETINFO` (0x80D0) answers the same value
@@ -139,8 +153,9 @@ The game's sequences: open sends 0x80 (volume 0) then 0x8020
 - **WP5.3:** the index is section 1. `tools/dc2data` can write
   `data/sound/<name>` straight from the records, with no conversion; the
   extracted files are ordinary WAVE files.
-- **WP5.4:** the shared stream channel plays 16-bit PCM WAVE (mono or
-  stereo, 48 kHz on retail) with START/STOP/SEEK in sectors, the two volume
-  commands, the mode bits above and the level reading. It needs no VAG
+- **WP5.4:** the shared stream channel plays 16-bit PCM WAVE (mono, 48 kHz
+  on retail) with START/STOP/SEEK in sectors, the two volume
+  commands, the mode bits above and the level reading. On the PAL disc
+  every entry is mono, so stereo is only for completeness. It needs no VAG
   decoder. Packs (`0x80F0`) answer 0, as retail does.
 - **Section 3.8 and risk "SOUND.HD3 format":** both can be closed.
