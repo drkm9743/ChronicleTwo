@@ -3,9 +3,12 @@
 #include "mg_memory.hpp"
 #include "scene.hpp"
 #include "scenesnd.hpp"
+#include "town_seamless.hpp"
 
 // Stride fix: retail walks stack[] as (u8 *) this + 8 + i * 4, a 4-byte pointer stride.
 PORT_OVERRIDE void CScene::ClearStack(int index) {
+    TownSeamlessBeforeClearStack(this, index);
+
     for (int i = index; i < stack_num; i++) {
         mgCMemory *memory = stack[i];
 

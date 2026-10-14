@@ -398,6 +398,7 @@ Writes are atomic: the file is written as `config.json.tmp` and renamed over `co
 |---|---|---|---|---|
 | `game.tick_rate` | number | 50 | 25 to 240 | logic ticks per second |
 | `game.debug_mode` | bool | false | | the boot debug unlock, and the pad-1 chord; see [DEBUG.md](DEBUG.md) |
+| `game.seamless_lake` | bool | true | | Palm Brinks keeps the lakeside (m05) and m04 loaded together, with the normal camera, eye view and photos there |
 | `video.present_mode` | string | fifo | fifo, mailbox, immediate | Vulkan present mode |
 | `video.interpolation` | bool | true | | interpolate display frames between ticks |
 | `video.max_fps` | number | 0 | 0 or more | display frame cap; 0 is unlimited |
@@ -646,6 +647,18 @@ active-slot placement (1100), active-slot moves (1300), and return after a drop
 outside the menu (1550). `item-menu-mouse-dungeon.input` reaches the dungeon's
 Item page and opens Bread's commands by frame 2850. These two scripts also use
 1280x720; scale `mouse:dx,dy` counts with the window dimensions for other sizes.
+
+### Seamless lakeside
+
+Deliberate deviation from retail. Palm Brinks (`m01`) keeps one sub map at a time in scene slot 1 and swaps it
+as the player walks (`EditLoop`, `ps2/src/editloop.cpp`). Near the line from (-2157, 756) to (-3037, 1531), between
+the load points of `m04` and the lakeside `m05`, retail raises the camera to a fixed height and refuses eye view
+and photos (`CancelEyeViewMode`), which hides the swap. With `game.seamless_lake` (default `true`, **Seamless
+lakeside** in PC SETTINGS > Controls) `port/src/town_seamless.cpp` keeps whichever of the two is not in slot 1 loaded
+in slot 2, in a stack of its own and in 64 texture blocks added to the town's table, and `LoadSubMap` swaps the two
+slots instead of loading. `port/src/editctrl.cpp` then undoes the camera limits and the eye-view refusal. Any other
+sub map load, or a `ClearStack` that reaches slot 2's stack, unloads slot 2 first. Villagers still belong to slot 1
+only. `false` restores retail.
 
 ### Fixed camera mouse look
 

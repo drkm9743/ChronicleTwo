@@ -21,6 +21,7 @@
 #include "platform/texture_catalog.hpp"
 #include "platform/datapacks.hpp"
 #include "texture_source.hpp"
+#include "town_seamless.hpp"
 
 // The rendering seam is installed only once the mglib stream has landed its header.
 #if __has_include("mglib_port.hpp")
@@ -876,6 +877,24 @@ PORT_OVERRIDE void mgCTextureManager::SetTableBuffer(int texture_count, int bloc
     int   node;
     int   count;
     u_int bytes;
+    // The town's table gets room for the map game.seamless_lake keeps in slot 2. The added entries live
+    // outside retail's buffer, so the town's other allocations keep their sizes.
+    if (texture_count == kTownTextureCount && block_total == kTownTextureBlocks) {
+        static std::vector<u_long128> storage;
+        static mgCMemory              table;
+        texture_count += kSeamlessTextureCount;
+        block_total += kSeamlessTextureBlocks;
+        const u_int quadwords = QuadwordsFor(block_total * sizeof(mgCTextureBlock)) +
+                                QuadwordsFor(texture_count * sizeof(mgCTexture)) +
+                                QuadwordsFor(texture_count * sizeof(mgCTexture *)) +
+                                QuadwordsFor(texture_count * sizeof(mgTEXTURE_HASH)) +
+                                QuadwordsFor(texture_count * sizeof(mgTEXTURE_HASH *)) + 5 * 2 + 16;
+        storage.assign(quadwords, u_long128{});
+        table.stSetBuffer(storage.data(), static_cast<int>(quadwords));
+        table.stack_used = 0;
+        table.lock = 0;
+        memory = &table;
+    }
     block_max = block_total;
     count = block_max;
     bytes = count * sizeof(mgCTextureBlock);

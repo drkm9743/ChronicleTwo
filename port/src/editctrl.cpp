@@ -15,8 +15,43 @@
 #include "platform/input.hpp"
 #include "scenevillager.hpp"
 #include "subgame.hpp"
+#include "town_seamless.hpp"
 
 extern sceVu0FVECTOR PortTownSavedEye asm("EditCtrl_SavedEye");
+extern int           PortEditEyeViewCancelOnce asm("EditCtrl_EyeViewCancelOnce");
+
+namespace {
+
+// EditLoop calls CancelEyeViewMode every frame the player is near the Palm Brinks lakeside line, in the same
+// branch that raises the camera's height limits to 100 and pins max to min. Remember that it ran this frame so
+// EditControl can undo the limits before the camera moves.
+bool LakeCameraLocked = false;
+
+void FreeLakeCamera(CScene *scene) {
+    if (!LakeCameraLocked) {
+        return;
+    }
+    LakeCameraLocked = false;
+    auto *base = scene->GetCamera(scene->active_camera);
+    if (!base || base->Iam() != CAMERA_KIND_CONTROL) {
+        return;
+    }
+    auto            *camera = static_cast<CCameraControl *>(base);
+    CameraCtrlParam *param = camera->GetActiveParam();
+    param->min_height = camera->default_param.min_height;
+    param->max_height = camera->default_param.max_height;
+}
+
+} // namespace
+
+// Retail locks eye view and photos at the Palm Brinks lakeside; game.seamless_lake lifts that lock.
+PORT_OVERRIDE void CancelEyeViewMode() {
+    if (ConfigGet().seamless_lake) {
+        LakeCameraLocked = true;
+        return;
+    }
+    PortEditEyeViewCancelOnce = true;
+}
 
 void TownMouseEyeAfterControl(CScene *scene, CPadControl *pad) {
     const InputMouseLook &look = InputGetMouseLook();
@@ -58,6 +93,8 @@ void TownMouseEyeAfterControl(CScene *scene, CPadControl *pad) {
 }
 
 PORT_OVERRIDE int EditControl(CScene *scene, CPadControl *pad) {
+    TownSeamlessStep(scene);
+    FreeLakeCamera(scene);
     // Keep retail movement, ladder, eye-entry/exit and photo behavior, granting
     // native eye look only after those helpers establish this frame's owner.
     if (PortEditLadderMode != EDIT_LADDER_MODE_NONE) {
