@@ -300,9 +300,10 @@ PORT_OVERRIDE void mgCDrawPrim::Begin2() {
     // End/Begin does not write a new colour. HUD bars inherit the preceding batch's tint.
     std::copy_n(mgPortGs().prim_color, 4, runs.at(this).color);
     // Likewise TEX0: the second weapon's synth gauge re-Initializes its builder and never binds a texture.
-    // Only the builder that wrote it inherits it: a builder whose Texture() got null (the dungeon loading
-    // picture before its block loads) must not pick up an unrelated texture.
-    if (texture.tex0_bits == 0 && mgPortGs().prim_tex0 != 0 && mgPortGs().prim_tex_owner == this) {
+    // Limited to the status board, and to the builder that wrote it: elsewhere a builder whose Texture() got
+    // null (the dungeon loading picture, the boot logo's fade-out) must not pick up an unrelated texture.
+    if (mgPortGs().inherit_prim_texture && texture.tex0_bits == 0 && mgPortGs().prim_tex0 != 0 &&
+        mgPortGs().prim_tex_owner == this) {
         texture.tex0_bits = mgPortGs().prim_tex0;
         texture.tex1_bits = mgPortGs().prim_tex1;
         runs.at(this).inherited_texture = true;

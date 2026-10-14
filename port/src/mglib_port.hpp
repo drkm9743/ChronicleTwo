@@ -98,6 +98,8 @@ struct mgPortGsState {
     uint64_t prim_tex0 = 0;
     uint64_t prim_tex1 = 0;
     const void *prim_tex_owner = nullptr; // the builder that wrote them
+    // Builders inherit them only while set: the dungeon status board is the one caller that relies on it.
+    bool inherit_prim_texture = false;
 };
 
 mgPortGsState &mgPortGs();

@@ -7,6 +7,7 @@
 #include "userdata.hpp"
 
 #include "gfx/gfx.hpp"
+#include "mglib_port.hpp"
 
 PORT_OVERRIDE void DrawStatusBord() {
     gfx::UiAnchorScope anchor(gfx::UiAnchor::Side(-1, -1, true));
@@ -20,6 +21,9 @@ PORT_OVERRIDE void DrawStatusBord() {
     WarningGage2.warning[1] = false;
     WarningGage2.warning[2] = false;
     LockOnModel.pos[3] = 0.0f;
+
+    // Retail keeps TEX0 in the GS across Initialize; the second weapon's synth gauge relies on it.
+    mgPortGs().inherit_prim_texture = true;
 
     switch (chara) {
         case USER_CHARA_MAX:
@@ -37,4 +41,6 @@ PORT_OVERRIDE void DrawStatusBord() {
             DrawMonsterUnitStatusBord(rate);
             break;
     }
+
+    mgPortGs().inherit_prim_texture = false;
 }
