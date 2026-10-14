@@ -97,6 +97,7 @@ struct mgPortGsState {
     // TEX0/TEX1 as the last mgCDrawPrim::Texture wrote them; Initialize clears a builder, not the GS.
     uint64_t prim_tex0 = 0;
     uint64_t prim_tex1 = 0;
+    const void *prim_tex_owner = nullptr; // the builder that wrote them
 };
 
 mgPortGsState &mgPortGs();

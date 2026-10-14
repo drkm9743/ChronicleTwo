@@ -495,6 +495,24 @@ TEST(MgDrawPrim, TextureSurvivesReinitialization) {
     rig.prim.End();
 }
 
+// Another builder whose Texture() got null keeps drawing without one rather than with the last builder's texture.
+TEST(MgDrawPrim, RetainedTextureStaysWithItsBuilder) {
+    GsReset     reset;
+    PrimRig     rig;
+    mgCTexture  source;
+    source.Initialize();
+    source.tex0.value = SCE_GS_SET_TEX0(0x3F00, 4, SCE_GS_PSMCT32, 8, 8, 1, 0, 0, 0, 0, 0, 0);
+    rig.prim.Texture(&source);
+    mgCDrawPrim other;
+    other.draw_manager = &rig.manager;
+    other.Initialize(&rig.memory, &rig.vif_packet);
+    other.TextureMapEnable(1);
+    other.Begin(MG_PRIM_SPRITE);
+    other.Texture(nullptr);
+    EXPECT_EQ(other.texture.tex0_bits, 0u);
+    other.End();
+}
+
 TEST(MgDrawPrim, PrimSubmitFlushesPendingBatchFirst) {
     PrimRig rig;
     rig.prim.Coord(1);

@@ -662,6 +662,7 @@ void mgPortResetGs() {
     gs_state.tex1 = 0x61;
     gs_state.prim_tex0 = 0;
     gs_state.prim_tex1 = 0;
+    gs_state.prim_tex_owner = nullptr;
     gs_state.scissor[0] = 0;
     gs_state.scissor[1] = 0;
     gs_state.scissor[2] = 639;
