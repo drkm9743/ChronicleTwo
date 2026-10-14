@@ -21,6 +21,8 @@
 #include "platform/texture_catalog.hpp"
 #include "platform/datapacks.hpp"
 #include "texture_source.hpp"
+#include "mw_runtime.h"
+#include "vu0_lanes.hpp"
 
 // The rendering seam is installed only once the mglib stream has landed its header.
 #if __has_include("mglib_port.hpp")
@@ -501,10 +503,12 @@ void ApplyAnimation(mgCTextureManager *manager, const texture_catalog::Entry &en
             if (args.size() > 5) data.bilinear = static_cast<signed char>(number(5));
         } else if (op == "SCROLL") {
             if (data.type == MG_TEX_ANIME_TYPE_SCROLL) {
-                const double sx = number(0) * 16;
-                const double sy = number(1) * 16;
-                data.period_x = sx == 0 ? 0 : static_cast<short>((data.dest_w - 16) / sx);
-                data.period_y = sy == 0 ? 0 : static_cast<short>((data.dest_h - 16) / sy);
+                // Retail's single-precision quotient: a zero speed divides to FLT_MAX on the EE, which
+                // converts to INT_MAX and leaves -1 in the short period.
+                const float sx = 16.0f * static_cast<float>(number(0));
+                const float sy = 16.0f * static_cast<float>(number(1));
+                data.period_x = static_cast<short>(fptosi(vu0::Div(static_cast<float>(data.dest_w - 16), sx)));
+                data.period_y = static_cast<short>(fptosi(vu0::Div(static_cast<float>(data.dest_h - 16), sy)));
             } else if (data.type == MG_TEX_ANIME_TYPE_WAVE) {
                 for (int axis = 0; axis < 2; ++axis) {
                     const double value = number(axis);

@@ -1,6 +1,8 @@
 #include "common.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 #include "mg_drawprim.hpp"
 #include "mg_tanime.hpp"
@@ -8,6 +10,67 @@
 #include "mg_texture_port.hpp"
 #include "mglib.hpp"
 #include "mglib_port.hpp"
+#include "mw_runtime.h"
+#include "vu0_lanes.hpp"
+
+namespace {
+
+int32_t Wrap32(int64_t value) {
+    return static_cast<int32_t>(static_cast<uint32_t>(value));
+}
+
+struct RetailCorner {
+    int x;
+    int y;
+};
+
+// Retail's Vertex4 ORs the sign-extended 64-bit X into the XYZ word, so an X that leaves 16 bits sets
+// Y's bits too. Returned in the units Vertex4 takes, so the port's 16-bit masking keeps both fields.
+RetailCorner RetailVertex(mgCDrawPrim &prim, int x, int y) {
+    int offset_x = 0;
+    int offset_y = 0;
+    prim.GetOffset(&offset_x, &offset_y);
+    const int32_t  gs_x = Wrap32(int64_t{x} + offset_x);
+    const int32_t  gs_y = Wrap32(int64_t{y} + offset_y);
+    const uint64_t word = static_cast<uint64_t>(static_cast<int64_t>(gs_x)) |
+                          (static_cast<uint64_t>(static_cast<int64_t>(gs_y)) << 16);
+    return {static_cast<int>(word & 0xFFFF) - offset_x, static_cast<int>((word >> 16) & 0xFFFF) - offset_y};
+}
+
+struct RetailSprite {
+    int          u0;
+    int          v0;
+    int          u1;
+    int          v1;
+    RetailCorner corner0;
+    RetailCorner corner1;
+};
+
+// Whether a sprite lights a pixel of the destination rectangle: the GS samples pixel centres.
+bool SpriteCovers(const RetailSprite &sprite, int left, int top, int right, int bottom) {
+    const int x0 = std::max(std::min(sprite.corner0.x, sprite.corner1.x), left);
+    const int x1 = std::min(std::max(sprite.corner0.x, sprite.corner1.x), right);
+    const int y0 = std::max(std::min(sprite.corner0.y, sprite.corner1.y), top);
+    const int y1 = std::min(std::max(sprite.corner0.y, sprite.corner1.y), bottom);
+    return x1 - x0 >= MG_TEX_ANIME_SUBTEXEL && y1 - y0 >= MG_TEX_ANIME_SUBTEXEL;
+}
+
+void ClearRect(int left, int top, int right, int bottom) {
+    mgCDrawPrim fill;
+    fill.Initialize(NULL, NULL);
+    fill.DepthTestEnable(0);
+    fill.ZMask(MG_Z_MASK_MASKED);
+    fill.DepthTest(MG_DEPTH_TEST_ALWAYS);
+    fill.TextureMapEnable(0);
+    fill.AlphaBlendEnable(0);
+    fill.Begin(MG_PRIM_SPRITE);
+    fill.Color(0, 0, 0, 0);
+    fill.Vertex4(left, top, 0);
+    fill.Vertex4(right, bottom, 0);
+    fill.End();
+}
+
+} // namespace
 
 PORT_OVERRIDE void mgCTextureAnime::TexAnime(int texb, sceVif1Packet *) {
     int                     i;
@@ -211,15 +274,17 @@ PORT_OVERRIDE void mgCTextureAnime::TexAnime(int texb, sceVif1Packet *) {
                     int offset_y;
 
                     if (data->type == MG_TEX_ANIME_TYPE_SCROLL) {
+                        // A zero period divides by zero: the EE gives FLT_MAX, which converts to INT_MAX,
+                        // where x86 gives NaN and INT_MIN.
                         float period_x = data->period_x;
                         period_x = period_x < 0.0f ? -period_x : period_x;
-                        offset_x = (float) (data->dest_w * data->phase_x) / period_x;
+                        offset_x = fptosi(vu0::Div((float) (data->dest_w * data->phase_x), period_x));
                         float numerator_y;
                         float period_y;
                         period_y = data->period_y;
                         numerator_y = data->dest_h * data->phase_y;
                         period_y = period_y < 0.0f ? -period_y : period_y;
-                        offset_y = numerator_y / period_y;
+                        offset_y = fptosi(vu0::Div(numerator_y, period_y));
                     } else {
                         offset_x = (float) data->dest_w *
                                    ((float) data->amplitude_x *
@@ -236,10 +301,13 @@ PORT_OVERRIDE void mgCTextureAnime::TexAnime(int texb, sceVif1Packet *) {
                     dest_end_x = data->dest_x + data->dest_w;
                     dest_end_y = data->dest_y + data->dest_h;
 
-                    src_split_x = data->src_x + data->src_w - offset_x * data->src_w / data->dest_w;
-                    src_split_y = data->src_y + data->src_h - offset_y * data->src_h / data->dest_h;
-                    dest_split_x = data->dest_x + offset_x;
-                    dest_split_y = data->dest_y + offset_y;
+                    // 32-bit wrapping, as the EE's mult and addu leave a saturated offset.
+                    src_split_x = Wrap32(data->src_x + data->src_w -
+                                         Wrap32(int64_t{offset_x} * data->src_w) / data->dest_w);
+                    src_split_y = Wrap32(data->src_y + data->src_h -
+                                         Wrap32(int64_t{offset_y} * data->src_h) / data->dest_h);
+                    dest_split_x = Wrap32(int64_t{data->dest_x} + offset_x);
+                    dest_split_y = Wrap32(int64_t{data->dest_y} + offset_y);
                 }
 
                 if (MgTextureSourceBpp(data->dest_tex) < MG_TEX_ANIME_BPP_TRUE_COLOUR) {
@@ -275,34 +343,48 @@ PORT_OVERRIDE void mgCTextureAnime::TexAnime(int texb, sceVif1Packet *) {
                     }
                 } else {
                     mgSetPkFrameBuffer(data->dest_tex);
-                    prim.Begin(MG_PRIM_SPRITE);
 
-                    prim.Texture(data->src_tex);
-                    prim.Color(data->r, data->g, data->b, data->a);
-                    prim.TextureCrd4(data->src_x, data->src_y);
-                    prim.Vertex4(dest_split_x, dest_split_y, 0);
-                    prim.TextureCrd4(src_split_x, src_split_y);
-                    prim.Vertex4(dest_end_x, dest_end_y, 0);
+                    const RetailSprite sprites[4] = {
+                        {data->src_x, data->src_y, src_split_x, src_split_y,
+                         RetailVertex(prim, dest_split_x, dest_split_y), RetailVertex(prim, dest_end_x, dest_end_y)},
+                        {data->src_x, src_split_y, src_split_x, src_end_y,
+                         RetailVertex(prim, dest_split_x, data->dest_y), RetailVertex(prim, dest_end_x, dest_split_y)},
+                        {src_split_x, data->src_y, src_end_x, src_split_y,
+                         RetailVertex(prim, data->dest_x, dest_split_y), RetailVertex(prim, dest_split_x, dest_end_y)},
+                        {src_split_x, src_split_y, src_end_x, src_end_y,
+                         RetailVertex(prim, data->dest_x, data->dest_y), RetailVertex(prim, dest_split_x, dest_split_y)},
+                    };
 
-                    prim.Texture(data->src_tex);
-                    prim.TextureCrd4(data->src_x, src_split_y);
-                    prim.Vertex4(dest_split_x, data->dest_y, 0);
-                    prim.TextureCrd4(src_split_x, src_end_y);
-                    prim.Vertex4(dest_end_x, dest_split_y, 0);
+                    bool covered = false;
 
-                    prim.Texture(data->src_tex);
-                    prim.TextureCrd4(src_split_x, data->src_y);
-                    prim.Vertex4(data->dest_x, dest_split_y, 0);
-                    prim.TextureCrd4(src_end_x, src_split_y);
-                    prim.Vertex4(dest_split_x, dest_end_y, 0);
+                    for (const RetailSprite &sprite : sprites) {
+                        covered = covered || SpriteCovers(sprite, data->dest_x, data->dest_y, dest_end_x, dest_end_y);
+                    }
 
-                    prim.Texture(data->src_tex);
-                    prim.TextureCrd4(src_split_x, src_split_y);
-                    prim.Vertex4(data->dest_x, data->dest_y, 0);
-                    prim.TextureCrd4(src_end_x, src_end_y);
-                    prim.Vertex4(dest_split_x, dest_split_y, 0);
+                    if (!covered && data->alpha_blend == MG_TEX_ANIME_ALPHA_BLEND_OFF) {
+                        // Retail's saturated offsets throw every sprite off the texture, so the records
+                        // after this one blend over whatever another texture left in that VRAM. The
+                        // port's target would instead keep their sum from frame to frame and saturate.
+                        ClearRect(data->dest_x, data->dest_y, dest_end_x, dest_end_y);
+                    } else {
+                        prim.Begin(MG_PRIM_SPRITE);
 
-                    prim.End();
+                        for (const RetailSprite &sprite : sprites) {
+                            prim.Texture(data->src_tex);
+
+                            if (&sprite == sprites) {
+                                prim.Color(data->r, data->g, data->b, data->a);
+                            }
+
+                            prim.TextureCrd4(sprite.u0, sprite.v0);
+                            prim.Vertex4(sprite.corner0.x, sprite.corner0.y, 0);
+                            prim.TextureCrd4(sprite.u1, sprite.v1);
+                            prim.Vertex4(sprite.corner1.x, sprite.corner1.y, 0);
+                        }
+
+                        prim.End();
+                    }
+
                     mgSetPkFrameBuffer(-1, -1, -1, -1);
                 }
 
