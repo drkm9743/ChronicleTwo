@@ -154,6 +154,7 @@ bool SwapIn(CScene *scene, int sub_map_no) {
     scene->SetActive(SCENE_DATA_MAP, kSubMapSlot);
     scene->SetActive(SCENE_DATA_MAP, kSeamlessSlot);
     SlotOneSeamless = !SlotOneSeamless;
+    std::fprintf(stderr, "seamless lake: swapped to sub map %d\n", sub_map_no);
     SeamlessMapNo = PortNowSubMapNo;
 
     // As LoadSubMap records a loaded sub map.
@@ -249,6 +250,8 @@ void TownSeamlessStep(CScene *scene) {
     if (!LoadSeamless(scene, partner)) {
         SeamlessFailed = true;
         std::fprintf(stderr, "seamless lake: could not load sub map %d beside %d\n", partner, PortNowSubMapNo);
+    } else {
+        std::fprintf(stderr, "seamless lake: sub map %d loaded beside %d\n", partner, PortNowSubMapNo);
     }
 }
 
@@ -266,13 +269,10 @@ void TownSeamlessBeforeClearStack(CScene *scene, int index) {
     }
 }
 
-// Map configuration scripts hide parts by where the player stands (DRAW_OFF_RECT) and behind planes between town
-// districts (OCCLUSION_PLANE) to fit the PS2's draw budget. In Palm Brinks those planes hide the houses, the church
-// and Max's house from the lakeside, which the loaded lakeside and free camera now show, so every part is drawn.
-PORT_OVERRIDE int cfgDRAW_OFF_RECT(SPI_STACK *, int) {
-    return 1;
-}
-
+// Map configuration scripts hide parts behind planes between town districts (OCCLUSION_PLANE) to fit the PS2's
+// draw budget. In Palm Brinks those planes hide the houses, the church and Max's house from the lakeside, which the
+// loaded lakeside and free camera now show, so the planes are dropped. DRAW_OFF_RECT, which hides whole areas by
+// the player's position, stays as retail.
 PORT_OVERRIDE int cfgOCCLUSION_PLANE(SPI_STACK *, int) {
     return 1;
 }
