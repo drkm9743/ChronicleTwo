@@ -32,6 +32,8 @@ namespace fs = std::filesystem;
 SaveSlotList SaveSlots;
 bool         SaveSlotNew = false;
 bool         SaveSlotListAutosave = true;
+bool          SaveSlotSpawnPending = false;
+AutosaveSpawn SaveSlotSpawn;
 
 namespace {
 constexpr char     kPrefix[] = "BESCES-51190dkcl";
@@ -293,6 +295,8 @@ fs::path SaveSlotPath(int number, bool second_card) {
 }
 
 fs::path SaveSlotAutosavePath() { return SaveSlotsRoot() / "autosave"; }
+
+fs::path SaveSlotAutosaveSpawnPath() { return SaveSlotsRoot() / "autosave.spawn"; }
 
 int SaveSlotNumber(const std::string &name, bool &second_card) {
     std::string_view text(name);

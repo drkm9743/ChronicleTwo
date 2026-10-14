@@ -58,8 +58,8 @@ namespace {
 int g_autosaved_floor = -1;
 int g_autosaved_map = -1;
 
-void WriteAutosave(int program_loop_no) {
-    if (PortAutosave && ConfigGet().autosave && PortCaptureMode == CAPTURE_OFF && !SaveSlotWriteAutosave(program_loop_no)) {
+void WriteAutosave(int program_loop_no, AutosaveSpawn *spawn = nullptr) {
+    if (PortAutosave && ConfigGet().autosave && PortCaptureMode == CAPTURE_OFF && !SaveSlotWriteAutosave(program_loop_no, spawn)) {
         std::fprintf(stderr, "autosave: could not write %s\n", PathsDisplay(SaveSlotAutosavePath()).c_str());
     }
 }
@@ -86,10 +86,38 @@ void AutosaveTown() {
         PortTownLockChara || PortTownPause || scene->event_run || GamePad__2.key_lock || SubGameRunning() || InInterior()) {
         return;
     }
-    const int map = scene->GetNowMapNo();
-    if (map >= 0 && map != g_autosaved_map) {
+    CCharacter2 *chara = scene->GetCharacter(scene->player_chara);
+    mgCCamera   *camera = scene->GetCamera(scene->active_camera);
+    const int    map = scene->GetNowMapNo();
+    if (!chara || !camera || map < 0) {
+        return;
+    }
+    // Loading the autosave starts at the map's save point, or at its entrance on a map without one; once the
+    // load's entry event gives the player control, move them back to where the autosave was written, as
+    // leaving an interior restores the spot outside its door.
+    if (SaveSlotSpawnPending) {
+        SaveSlotSpawnPending = false;
+        if (GetSaveData()->map_no == SaveSlotSpawn.map_no) {
+            chara->SetPosition(SaveSlotSpawn.position);
+            chara->SetRotation(SaveSlotSpawn.rotation);
+            chara->ResetDAPosition();
+            chara->Step();
+            chara->StepDA(10);
+            camera->SetPos(SaveSlotSpawn.camera_pos);
+            camera->SetRef(SaveSlotSpawn.camera_ref);
+            g_autosaved_map = map;
+            return;
+        }
+    }
+    if (map != g_autosaved_map) {
         g_autosaved_map = map;
-        WriteAutosave(LOOP_EDIT);
+        AutosaveSpawn spawn;
+        spawn.map_no = GetSaveData()->map_no;
+        chara->GetPosition(spawn.position);
+        chara->GetRotation(spawn.rotation);
+        camera->GetPos(spawn.camera_pos);
+        camera->GetRef(spawn.camera_ref);
+        WriteAutosave(LOOP_EDIT, &spawn);
     }
 }
 

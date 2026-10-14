@@ -72,7 +72,7 @@ unsigned long long NewestCounter() {
 }
 } // namespace
 
-bool SaveSlotWriteAutosave(int program_loop_no) {
+bool SaveSlotWriteAutosave(int program_loop_no, AutosaveSpawn *spawn) {
     if (FilesCreateDirectory(SaveSlotsRoot()) == FilesResult::kFailed) {
         return false;
     }
@@ -81,7 +81,15 @@ bool SaveSlotWriteAutosave(int program_loop_no) {
     if (program_loop_no == LOOP_DUNGEON) {
         image->dng_tree_flag = 0;
     }
-    return SaveSlotWrite(SaveSlotAutosavePath(), *image, true) == FilesResult::kWritten;
+    if (SaveSlotWrite(SaveSlotAutosavePath(), *image, true) != FilesResult::kWritten) {
+        return false;
+    }
+    // A spot file left from an older autosave no longer matches its counter, so it is never applied.
+    if (spawn) {
+        spawn->counter = image->unique_counter;
+        FilesWrite(SaveSlotAutosaveSpawnPath(), spawn, sizeof(*spawn), true);
+    }
+    return true;
 }
 
 CMemoryCardManager *SaveSlotManager() { return active_manager; }
@@ -240,6 +248,9 @@ PORT_OVERRIDE int CMemoryCardManager::LoadFromMc(int row) {
     load_dungeon_no = image->dungeon_no;
     load_floor_id = image->floor_id;
     load_dng_tree_flag = image->dng_tree_flag;
+    SaveSlotSpawnPending = SaveSlots.saves[row].autosave && image->program_loop_no == LOOP_EDIT &&
+                           FilesRead(SaveSlotAutosaveSpawnPath(), &SaveSlotSpawn, sizeof(SaveSlotSpawn)) == sizeof(SaveSlotSpawn) &&
+                           SaveSlotSpawn.counter == image->unique_counter && SaveSlotSpawn.map_no == image->map_no;
     if (save->tour.base_day <= 0 && save->GetBitFlag(SAVE_FLAG_FISHING_CONTEST_UNLOCKED)) {
         save->tour.base_day = 7;
     }

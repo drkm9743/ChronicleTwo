@@ -214,7 +214,12 @@ money or with an escape item), and as a dungeon save
 (`LOOP_DUNGEON`, `dng_tree_flag` 0) once on each floor, the first frame the
 player has control there. Loading the dungeon one takes retail's path for a
 save made on a floor: the title enters the saved dungeon and floor with
-`mc_load` set. Its counter is the newest, so the load screen, which lists it
+`mc_load` set. A town autosave also writes `autosave.spawn` beside it: the player's position,
+rotation and camera, with the autosave's counter. Retail saves hold only the
+map, and a loaded town save starts at that map's save point (or its entrance on
+a map without one); after loading the autosave, the first frame the player has
+control on its map moves them back to the recorded spot. A spot file whose
+counter or map does not match the autosave is ignored. The autosave's counter is the newest, so the load screen, which lists it
 first as "Autosave", starts on it until a later save; choosing it loads at once,
 as it has no file number for the confirmation to name. `game.autosave` (PC
 Settings, Game page) turns it off; headless, `--jump`, input-script and replay
