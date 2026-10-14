@@ -208,7 +208,9 @@ are never removed automatically; unrelated names and temporary files are not row
 
 The autosave is `<save root>/saves/autosave`, the same image as a numbered
 save, and never written by the save screen. It is written as a town save
-whenever a town starts without an entry event, and as a dungeon save
+once on each town map, the first frame the player walks it outside an interior
+(however the town was entered, including leaving a dungeon by paying half the
+money or with an escape item), and as a dungeon save
 (`LOOP_DUNGEON`, `dng_tree_flag` 0) once on each floor, the first frame the
 player has control there. Loading the dungeon one takes retail's path for a
 save made on a floor: the title enters the saved dungeon and floor with
