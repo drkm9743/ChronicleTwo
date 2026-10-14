@@ -101,7 +101,6 @@ TEST_F(PlatformConfig, FullFileRoundTrips) {
     full.mouse_capture = false;
     full.mouse_zoom = true;
     full.mouse_fixed_look = false;
-    full.seamless_lake = false;
     full.touchpad = false;
     full.touchpad_sensitivity = 2.0f;
     full.lightbar = false;

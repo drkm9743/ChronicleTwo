@@ -40,7 +40,6 @@ TEST(PcOptions, RequestedSettingsHaveUniqueRowsAndRoundTripTheirEdits) {
         "input.mouse_capture",
         "input.mouse_zoom",
         "input.mouse_fixed_look",
-        "game.seamless_lake",
         "input.stick_sensitivity",
         "input.stick_invert_x",
         "input.stick_invert_y",

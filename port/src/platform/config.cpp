@@ -198,9 +198,6 @@ bool Apply(Config &config, std::string_view name, const Json &value) {
             return rate >= kConfigTickRateMin && rate <= kConfigTickRateMax;
         });
     }
-    if (name == "game.seamless_lake") {
-        return ReadBool(value, config.seamless_lake);
-    }
     if (name == "game.debug_mode") {
         return ReadBool(value, config.debug_mode);
     }
@@ -422,7 +419,6 @@ std::string ConfigSerialize(const Config &config) {
     Json root;
     root["game"]["tick_rate"] = s.tick_rate;
     root["game"]["debug_mode"] = config.debug_mode;
-    root["game"]["seamless_lake"] = config.seamless_lake;
     root["video"]["present_mode"] = kPresentModeNames[static_cast<std::size_t>(s.present_mode)];
     root["video"]["interpolation"] = config.interpolation;
     root["video"]["max_fps"] = s.max_fps;

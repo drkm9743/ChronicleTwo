@@ -15,7 +15,6 @@ extern int                 CharaFallFlag asm("EditCtrl_FallFlag");
 extern EditCharaMotionMode CharaMotionMode asm("EditCtrl_MotionMode");
 extern int                 CharaMotionModeCnt asm("EditCtrl_MotionCount");
 extern int                 InitEyeViewFlag asm("EditCtrl_EyeInitialized");
-extern int                 EyeViewCancelOnce asm("EditCtrl_EyeViewCancelOnce");
 
 void PortRetailResetViewMode(CScene *) asm("EditCtrl_ResetViewMode");
 

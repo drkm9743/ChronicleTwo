@@ -1,5 +1,6 @@
 #include "common.h"
 
+#include <cstdio>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -13,7 +14,6 @@
 #include "mg_memory.hpp"
 #include "mg_texture.hpp"
 #include "mglib.hpp"
-#include "platform/config.hpp"
 #include "sceneload.hpp"
 #include "town_seamless.hpp"
 
@@ -142,7 +142,7 @@ bool LoadSeamless(CScene *scene, int sub_map_no) {
 // Brings the map in slot 2 into slot 1 and the one in slot 1 into slot 2, with their stacks and textures.
 bool SwapIn(CScene *scene, int sub_map_no) {
     Revalidate(scene);
-    if (!ConfigGet().seamless_lake || SeamlessScene != scene || SeamlessMapNo != sub_map_no ||
+    if (SeamlessScene != scene || SeamlessMapNo != sub_map_no ||
         PortNowSubMapNo != Partner(sub_map_no) || !SlotHolds(scene, kSubMapSlot, PortNowSubMapNo) ||
         !SlotHolds(scene, kSeamlessSlot, sub_map_no)) {
         return false;
@@ -225,7 +225,7 @@ PORT_OVERRIDE int LoadSubMap(CScene *scene, int sub_map_no, int flag) {
 
 void TownSeamlessStep(CScene *scene) {
     Revalidate(scene);
-    if (!ConfigGet().seamless_lake || !InPalmBrinks(scene)) {
+    if (!InPalmBrinks(scene)) {
         DropSeamless(scene);
         return;
     }

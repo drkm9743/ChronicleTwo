@@ -18,7 +18,6 @@
 #include "town_seamless.hpp"
 
 extern sceVu0FVECTOR PortTownSavedEye asm("EditCtrl_SavedEye");
-extern int           PortEditEyeViewCancelOnce asm("EditCtrl_EyeViewCancelOnce");
 
 namespace {
 
@@ -44,13 +43,10 @@ void FreeLakeCamera(CScene *scene) {
 
 } // namespace
 
-// Retail locks eye view and photos at the Palm Brinks lakeside; game.seamless_lake lifts that lock.
+// Retail locks eye view and photos at the Palm Brinks lakeside to hide its sub map swap, which the port keeps
+// loaded (town_seamless.cpp); the camera there stays as everywhere else.
 PORT_OVERRIDE void CancelEyeViewMode() {
-    if (ConfigGet().seamless_lake) {
-        LakeCameraLocked = true;
-        return;
-    }
-    PortEditEyeViewCancelOnce = true;
+    LakeCameraLocked = true;
 }
 
 void TownMouseEyeAfterControl(CScene *scene, CPadControl *pad) {

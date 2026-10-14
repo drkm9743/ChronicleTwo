@@ -175,7 +175,6 @@ std::span<const Page> Pages() {
                          Choice<&Config::glyph_device>("input.glyph_device", "Glyph style", "Auto follows the last device used.\nKeyboard prompts follow your current bindings.", {"Auto", "PS3", "PS4", "PS5", "PS5 Color", "Xbox", "Switch", "Steam Deck", "Steam Controller", "Keyboard"}),
                          Choice<&Config::mouse_zoom>("input.mouse_zoom", "Mouse wheel zoom", "Wheel changes camera distance while walking.\nMenus use the wheel for selection instead.", {"Off", "On"}),
                          Choice<&Config::mouse_fixed_look>("input.mouse_fixed_look", "Fixed camera mouse look", "Gently look around fixed-camera rooms.\nThe view returns when the mouse rests.", {"Off", "On"}),
-                         Choice<&Config::seamless_lake>("game.seamless_lake", "Seamless lakeside", "Palm Brinks lakeside loads with its neighbour and\nkeeps the normal camera, eye view and photos.", {"Off", "On"}),
                      }},
         {"Bindings", Bindings()           },
     };

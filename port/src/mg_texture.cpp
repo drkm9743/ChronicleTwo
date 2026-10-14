@@ -877,7 +877,7 @@ PORT_OVERRIDE void mgCTextureManager::SetTableBuffer(int texture_count, int bloc
     int   node;
     int   count;
     u_int bytes;
-    // The town's table gets room for the map game.seamless_lake keeps in slot 2. The added entries live
+    // The town's table gets room for the map town_seamless.cpp keeps in slot 2. The added entries live
     // outside retail's buffer, so the town's other allocations keep their sizes.
     if (texture_count == kTownTextureCount && block_total == kTownTextureBlocks) {
         static std::vector<u_long128> storage;
