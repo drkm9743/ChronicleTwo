@@ -15,6 +15,7 @@
 #include "mg_texture.hpp"
 #include "mglib.hpp"
 #include "sceneload.hpp"
+#include "scriptinterpreter.hpp"
 #include "town_seamless.hpp"
 
 extern MapJumpMapInfo PortSubMapInfo asm("MapJump_SubMapInfo");
@@ -263,4 +264,15 @@ void TownSeamlessBeforeClearStack(CScene *scene, int index) {
             return;
         }
     }
+}
+
+// Map configuration scripts hide parts by where the player stands (DRAW_OFF_RECT) and behind planes between town
+// districts (OCCLUSION_PLANE) to fit the PS2's draw budget. In Palm Brinks those planes hide the houses, the church
+// and Max's house from the lakeside, which the loaded lakeside and free camera now show, so every part is drawn.
+PORT_OVERRIDE int cfgDRAW_OFF_RECT(SPI_STACK *, int) {
+    return 1;
+}
+
+PORT_OVERRIDE int cfgOCCLUSION_PLANE(SPI_STACK *, int) {
+    return 1;
 }

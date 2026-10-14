@@ -656,7 +656,9 @@ and photos (`CancelEyeViewMode`), which hides the swap. `port/src/town_seamless.
 in slot 2, in a stack of its own and in 64 texture blocks added to the town's table, and `LoadSubMap` swaps the two
 slots instead of loading. `port/src/editctrl.cpp` then undoes the camera limits and the eye-view refusal. Any other
 sub map load, or a `ClearStack` that reaches slot 2's stack, unloads slot 2 first. Villagers still belong to slot 1
-only. To restore retail, delete `port/src/town_seamless.*`, the `CancelEyeViewMode` and `FreeLakeCamera` code in
+only. The same file also drops every map configuration's `DRAW_OFF_RECT` and `OCCLUSION_PLANE`: they hide
+parts by the player's position and behind planes between districts (in Palm Brinks, the houses, the church and
+Max's house from the lakeside), so all parts are drawn. To restore retail, delete `port/src/town_seamless.*`, the `CancelEyeViewMode` and `FreeLakeCamera` code in
 `port/src/editctrl.cpp`, and the town table extension in `mgCTextureManager::SetTableBuffer`.
 
 ### Fixed camera mouse look
