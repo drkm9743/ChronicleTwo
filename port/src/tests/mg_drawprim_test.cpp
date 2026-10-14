@@ -678,3 +678,20 @@ TEST(MgDrawPrim, LinearSpriteOffsetFollowsScaledAndFlippedUvSlopes) {
     // Half a destination pixel corresponds to -0.25 U and +2 V here.
     ExpectQuadUv(q, 24.25f, 8.25f, 38, 70);
 }
+
+// The same builder asking for a texture that is not loaded drops the one Begin filled in.
+TEST(MgDrawPrim, NullTextureDropsInheritedTexture) {
+    GsReset     reset;
+    PrimRig     rig;
+    mgCTexture  source;
+    source.Initialize();
+    source.tex0.value = SCE_GS_SET_TEX0(0x3F00, 4, SCE_GS_PSMCT32, 8, 8, 1, 0, 0, 0, 0, 0, 0);
+    rig.prim.Texture(&source);
+    rig.prim.Initialize(&rig.memory, &rig.vif_packet);
+    rig.prim.TextureMapEnable(1);
+    rig.prim.Begin(MG_PRIM_SPRITE);
+    EXPECT_EQ(rig.prim.texture.tex0_bits, source.tex0_bits);
+    rig.prim.Texture(nullptr);
+    EXPECT_EQ(rig.prim.texture.tex0_bits, 0u);
+    rig.prim.End();
+}
