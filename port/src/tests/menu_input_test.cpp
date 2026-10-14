@@ -243,7 +243,7 @@ TEST_F(MenuInput, FieldMovementKeysDoNotSuppressDpadRepeatOrSecondPadLock) {
         EXPECT_EQ(GamePad__2.GetLX(), -128);
         EXPECT_FALSE(GamePad__2.On(PAD_LEFT));
         EXPECT_EQ(GamePad__2.Down(PAD_RIGHT) != 0, frame == 4 || frame == 7 || frame == 9 || frame == 11);
-        EXPECT_TRUE(GamePad__2.On2(PAD_LEFT));
+        EXPECT_FALSE(GamePad__2.On2(PAD_LEFT));
     }
     GamePad__2.key_lock2 = 1;
     GamePad__2.UpDate();

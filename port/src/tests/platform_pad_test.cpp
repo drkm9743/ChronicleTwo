@@ -83,23 +83,19 @@ TEST(PlatformPad, ScriptedPressReadsOnFirstPortAndReleases) {
     InputScriptInstall({});
 }
 
-TEST(PlatformPad, ScriptedPressReadsOnSecondPortAndReleases) {
+// A second controller, or the same one seen twice through DSX or Steam Input, never plays.
+TEST(PlatformPad, SecondPortStaysNeutral) {
     InstallScript(kPressSecondPort);
     InitGamePad();
     WarmUp();
 
     Tick(kPressFrame);
-    EXPECT_TRUE(GamePad__2.On2(PAD_CIRCLE));
-    EXPECT_TRUE(GamePad__2.Down2(PAD_CIRCLE));
-    EXPECT_FALSE(GamePad__2.On(PAD_CIRCLE));
-    EXPECT_EQ(GamePad__2.GetRX2(), 128);
-
-    Tick(kReleaseFrame);
     EXPECT_FALSE(GamePad__2.On2(PAD_CIRCLE));
     EXPECT_FALSE(GamePad__2.Down2(PAD_CIRCLE));
-    EXPECT_NE(GamePad__2.previous_pad[1].button & PAD_CIRCLE, 0);
-    EXPECT_EQ(GamePad__2.pad[1].button & PAD_CIRCLE, 0);
+    EXPECT_FALSE(GamePad__2.On(PAD_CIRCLE));
+    EXPECT_EQ(GamePad__2.pad[1].button, 0);
     EXPECT_EQ(GamePad__2.GetRX2(), 0);
+    EXPECT_EQ(GamePad__2.pad[1].phase, PAD_PHASE_READY);
     InputScriptInstall({});
 }
 

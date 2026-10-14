@@ -31,6 +31,11 @@ PORT_OVERRIDE void CGamePad::UpDate() {
         previous_pad[port] = pad[port];
         PortReadPad(&pad[port], port, 0);
     }
+    // Single player: only pad 1 plays. A tool such as DSX or Steam Input shows one controller twice, and
+    // the copy landed on pad 2. Retail reads pad 2's R2 in towns to toggle the event rain, which then
+    // keeps falling on every map, and pad 2's Circle toggles DebugFlag in debug mode (switching off
+    // every menu's R3 debug panel). Pad 2's debug buttons stay reachable from pad 1 with L2+Select held.
+    Neutral(pad[1]);
 
     const bool playback = capture_mode == PAD_CAPTURE_PLAY;
     if (capture_mode == PAD_CAPTURE_RECORD) {
