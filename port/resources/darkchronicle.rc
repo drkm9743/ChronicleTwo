@@ -1,0 +1,4 @@
+// Windows resources for darkchronicle.exe. The icon is Max's wrench, rendered
+// from the game's own memory-card icon (dc2_ic.ico in menu/<language>/save.pac).
+// SDL picks up the executable's first icon for the window and taskbar.
+1 ICON "darkchronicle.ico"

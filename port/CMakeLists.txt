@@ -246,6 +246,11 @@ set_target_properties(darkchronicle PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_
 ct_link_game(darkchronicle)
 if(WIN32)
     target_link_options(darkchronicle PRIVATE -municode)
+    # Executable icon: Max's wrench from the retail memory-card icon.
+    # Built on its own so the game's C++ flags never reach the resource compiler.
+    enable_language(RC)
+    add_library(darkchronicle_resources OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/resources/darkchronicle.rc)
+    target_sources(darkchronicle PRIVATE $<TARGET_OBJECTS:darkchronicle_resources>)
 endif()
 
 include(GNUInstallDirs)
