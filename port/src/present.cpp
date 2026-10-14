@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "camera_fixed.hpp"
+#include "crash_report.hpp"
 #include "exitcodes.hpp"
 #include "gfx/gfx.hpp"
 #include "menu_mouse.hpp"
@@ -51,6 +52,7 @@ void PollFpsToggle() {
 const gfx::DisplayList *DisplayOverlayList() {
     if (PresentMouseActive() && !ClockUnbounded()) {
         if (!WindowPollEvents()) {
+            CrashReportWindowClosed();
             std::exit(kExitOk);
         }
         InputPoll();

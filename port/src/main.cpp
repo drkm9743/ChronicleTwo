@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "audio/soundtrack.hpp"
+#include "crash_report.hpp"
 #include "dataread.hpp"
 #include "dataread_port.hpp"
 #include "exitcodes.hpp"
@@ -214,7 +215,9 @@ PresentSettings PresentSettingsFor(const Config &config, const Options &options)
 
 // A closed window ends the process here: the game has no stop request to ask its loop to return.
 void PumpHost() {
+    CrashReportHeartbeat();
     if (!WindowPollEvents()) {
+        CrashReportWindowClosed();
         std::exit(kExitOk);
     }
     DisplayPump();
@@ -246,6 +249,7 @@ void ApplyConfigChange(const HostSettings &before, const HostSettings &after) {
 }
 
 int Run(int argc, const char **argv) {
+    CrashReportInstall();
     GameSetIdentity();
     argc = PathsConsumeArgs(argc, argv);
     g_options = ParseOptions(argc, argv);
