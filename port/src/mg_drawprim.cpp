@@ -298,6 +298,11 @@ PORT_OVERRIDE void mgCDrawPrim::Begin2() {
     runs.insert_or_assign(this, PrimRun{});
     // End/Begin does not write a new colour. HUD bars inherit the preceding batch's tint.
     std::copy_n(mgPortGs().prim_color, 4, runs.at(this).color);
+    // Likewise TEX0: the second weapon's synth gauge re-Initializes its builder and never binds a texture.
+    if (texture.tex0_bits == 0 && mgPortGs().prim_tex0 != 0) {
+        texture.tex0_bits = mgPortGs().prim_tex0;
+        texture.tex1_bits = mgPortGs().prim_tex1;
+    }
 
     disabled = 1;
 
@@ -488,6 +493,8 @@ PORT_OVERRIDE void mgCDrawPrim::Texture(mgCTexture *source) {
 
     texture = *source;
     texture.Bilinear(bilinear);
+    mgPortGs().prim_tex0 = texture.tex0_bits;
+    mgPortGs().prim_tex1 = texture.tex1_bits;
 }
 
 PORT_OVERRIDE int mgCDrawManager::ReloadTexture(int group, sceVif1Packet *vif_packet) {

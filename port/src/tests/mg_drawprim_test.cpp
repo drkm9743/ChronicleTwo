@@ -479,6 +479,22 @@ TEST(MgDrawPrim, ColourPersistsAcrossBuildersAndReinitialization) {
     }
 }
 
+// Retail keeps TEX0 in the GS: the second weapon's synth gauge re-Initializes its builder and binds nothing.
+TEST(MgDrawPrim, TextureSurvivesReinitialization) {
+    GsReset     reset;
+    PrimRig     rig;
+    mgCTexture  source;
+    source.Initialize();
+    source.tex0.value = SCE_GS_SET_TEX0(0x3F00, 4, SCE_GS_PSMCT32, 8, 8, 1, 0, 0, 0, 0, 0, 0);
+    rig.prim.Texture(&source);
+    rig.prim.Initialize(&rig.memory, &rig.vif_packet);
+    EXPECT_EQ(rig.prim.texture.tex0_bits, 0u);
+    rig.prim.TextureMapEnable(1);
+    rig.prim.Begin(MG_PRIM_TRIANGLE_STRIP);
+    EXPECT_EQ(rig.prim.texture.tex0_bits, source.tex0_bits);
+    rig.prim.End();
+}
+
 TEST(MgDrawPrim, PrimSubmitFlushesPendingBatchFirst) {
     PrimRig rig;
     rig.prim.Coord(1);

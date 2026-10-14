@@ -94,6 +94,9 @@ struct mgPortGsState {
     uint8_t fog_color[3] = {};
     // Colour survives primitive and packet boundaries until another Color call.
     uint8_t prim_color[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+    // TEX0/TEX1 as the last mgCDrawPrim::Texture wrote them; Initialize clears a builder, not the GS.
+    uint64_t prim_tex0 = 0;
+    uint64_t prim_tex1 = 0;
 };
 
 mgPortGsState &mgPortGs();

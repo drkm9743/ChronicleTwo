@@ -123,6 +123,9 @@ PORT_OVERRIDE int MenuCapture(int block, mgCMemory *stack, int draw) {
         MenuFrameTex->tex0.bits.tcc = 0;
         MenuFrameTex->image[0] = (u_long128 *) dst;
         stack->Alloc(half_w * half_h * 4 / 16 + 1);
+        // Registers the stack image now. A later reload that first noticed the new pointer would rebuild
+        // the registry image and release the target under this TBP0, showing the stack's stale bytes.
+        MgTextureLookup(MenuFrameTex);
     }
 
     // The grab costs a frame on PS2 too: the tick that just ended is gfx::kPreviousFrame in the next one.
