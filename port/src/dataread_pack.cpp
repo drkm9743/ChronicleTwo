@@ -45,7 +45,18 @@ u_int *RegisterMember(u_int *pack, PACK_ENTRY *entry, int *out_size) {
     auto *data = reinterpret_cast<u_int *>(reinterpret_cast<u8 *>(entry) + entry->offset);
     if (auto parent = TextureSourceLookup(pack)) {
         std::string source = *parent + "/" + CatalogMemberName(entry->name);
-        const bool converted = texture_catalog::Contains(source);
+        bool converted = texture_catalog::Contains(source);
+        if (!converted) {
+            // A retail PACK can hold a zero-sized member (dungeon/monster/e03a.chr's e03a.wgt); the
+            // converter then reads the whole file as raw bytes and names each image it finds by its
+            // byte offset in the parent, which is where this member's data sits.
+            const auto offset = reinterpret_cast<u8 *>(data) - reinterpret_cast<u8 *>(pack);
+            std::string by_offset = *parent + "#offset:" + std::to_string(offset);
+            if (texture_catalog::Contains(by_offset)) {
+                source = std::move(by_offset);
+                converted = true;
+            }
+        }
         if (converted) {
             // The published PACK has no texture payload. Give callers a stable, opaque in-memory
             // handle that can be copied into their arena without resembling an IMG or TIM2 header.
