@@ -98,6 +98,11 @@ UNIT_FIXUPS = [
     printf("data memory size = %d kbyte", (data_size - 210128) * 16 / 1024);""",
      """    TotalDataBuff.stSetBuffer(&main_stack->stack[main_stack->stack_used], data_size - 270128);
     printf("data memory size = %d kbyte", (data_size - 270128) * 16 / 1024);"""),
+    # StepDownLoadAnaunce and DrawDownLoadAnaunce walk 8 message windows of a 6-entry table. Retail's
+    # two extra slots hold nothing; on the host they are the next statics (EventCamera), which the
+    # geostone announcement then scribbled on and drew as message windows, crashing later in the town
+    # or the event. Two more slots, never filled, keep the walk on null entries.
+    ("editmenu.cpp", "static CDC2Mes *DownLoadMes[6];", "static CDC2Mes *DownLoadMes[8];"),
     ("editloop.cpp", """    main_stack->Alloc(data_size - 210128);
     MenuBuffer__2.stSetBuffer(read_buffer = main_stack->stAlloc64(200000), 200000);
     read_buffer_end = read_buffer + 200000;""",

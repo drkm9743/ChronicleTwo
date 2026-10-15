@@ -74,6 +74,8 @@ LONG WINAPI OnUnhandled(EXCEPTION_POINTERS *info) {
     if (InterlockedExchange(&entered, 1) != 0) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
+    // stdout is block buffered when redirected to a file; keep its last lines.
+    std::fflush(stdout);
     Report(stderr, info);
 
     wchar_t path[MAX_PATH];
