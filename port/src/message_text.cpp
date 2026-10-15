@@ -11,11 +11,13 @@
 // The PAL disc's menu and system messages describe PS2 memory cards, their slots and the console.
 // The PC port keeps saves, the photo album and Extras data in folders, so the messages that
 // mention them are replaced here in every PAL language, as text in the message's own encoding.
-// The disc files are recognised by their header words; any other message file is left as it is.
+// The dungeon's Spheda prompt names Max, while the port lets either character play, so it is
+// replaced as well. The disc files are recognised by their header words; any other message file
+// is left as it is.
 
 namespace {
 
-enum class MesFile { kAllMenu, kSysMes };
+enum class MesFile { kAllMenu, kSysMes, kDungeon };
 
 struct KnownFile {
     MesFile       file;
@@ -24,12 +26,14 @@ struct KnownFile {
     std::uint16_t word1;
 };
 
-// Header words of menu/<language>/*.pac:allmenu.mes and meswin/sysmes_<language>.mes on the PAL disc.
+// Header words of menu/<language>/*.pac:allmenu.mes, meswin/sysmes_<language>.mes and
+// dungeon/msg/d01_<language>.mes on the PAL disc.
 constexpr KnownFile kKnownFiles[] = {
     {MesFile::kAllMenu, 1, 933, 14870}, {MesFile::kAllMenu, 2, 934, 16394}, {MesFile::kAllMenu, 3, 933, 11090},
     {MesFile::kAllMenu, 4, 934, 17338}, {MesFile::kAllMenu, 5, 934, 20008}, {MesFile::kSysMes, 1, 360, 27192},
     {MesFile::kSysMes, 2, 360, 28058},  {MesFile::kSysMes, 3, 360, 24658},  {MesFile::kSysMes, 4, 360, 27594},
-    {MesFile::kSysMes, 5, 360, 27654},
+    {MesFile::kSysMes, 5, 360, 27654},  {MesFile::kDungeon, 1, 83, 8244},  {MesFile::kDungeon, 2, 84, 8798},
+    {MesFile::kDungeon, 3, 84, 7192},   {MesFile::kDungeon, 4, 84, 8594},  {MesFile::kDungeon, 5, 84, 9310},
 };
 
 struct Replacement {
@@ -99,6 +103,7 @@ constexpr Replacement kReplacements[] = {
     {MesFile::kSysMes, 1, 101,
      "There is insufficient space to save.\nAt least 502KB is necessary to\nsave game data. Continue anyway?{TAIL}"},
     {MesFile::kSysMes, 1, 102, "Loading..."},
+    {MesFile::kDungeon, 1, 2002, "Stand next to the Sphere?"},
 
     // French
     {MesFile::kAllMenu, 2, 670, "Voir album ?"},
@@ -162,6 +167,7 @@ constexpr Replacement kReplacements[] = {
      "Espace libre insuffisant pour sauvegarder.\n502 KB minimum sont nécessaires pour\nsauvegarder les données. "
      "Continuer ?{TAIL}"},
     {MesFile::kSysMes, 2, 102, "Chargement..."},
+    {MesFile::kDungeon, 2, 2002, "Te placer près de la sphère ?"},
 
     // German
     {MesFile::kAllMenu, 3, 670, "Album öffnen?"},
@@ -222,6 +228,7 @@ constexpr Replacement kReplacements[] = {
      "Nicht genügend Speicherplatz.\nMind. 502 KB freier Speicherplatz\nsind zum Speichern erforderlich. Trotzdem "
      "fortfahren?{TAIL}"},
     {MesFile::kSysMes, 3, 102, "Lädt ..."},
+    {MesFile::kDungeon, 3, 2002, "Neben die Kugel stellen?"},
 
     // Italian
     {MesFile::kAllMenu, 4, 670, "Visualizzare Album?"},
@@ -285,6 +292,7 @@ constexpr Replacement kReplacements[] = {
      "Spazio insufficiente per salvare.\nOccorrono almeno 502 KB per salvare\ni dati di gioco. Continuare "
      "ugualmente?{TAIL}"},
     {MesFile::kSysMes, 4, 102, "Caricamento..."},
+    {MesFile::kDungeon, 4, 2002, "Metterti accanto alla Sphera?"},
 
     // Spanish
     {MesFile::kAllMenu, 5, 670, "¿Ver Álbum?"},
@@ -347,6 +355,7 @@ constexpr Replacement kReplacements[] = {
      "No hay espacio suficiente para guardar.\nSe necesitan al menos 502 KB de espacio libre.\n¿Continuar de todas "
      "formas?{TAIL}"},
     {MesFile::kSysMes, 5, 102, "Cargando..."},
+    {MesFile::kDungeon, 5, 2002, "¿Colocarte junto a la Esfera?"},
 };
 
 constexpr std::uint16_t kCodeNewline = 0xFF00;
