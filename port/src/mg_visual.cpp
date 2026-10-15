@@ -19,6 +19,10 @@
 namespace {
 
 constexpr int kFaceUnusedFrameLimit = 600;
+// Fix and Motion faces stay in the table until their address is reused, which never happens for most faces
+// of an unloaded map. Their GPU mesh is released after this many unused frames and rebuilt from the CPU copy
+// when the face is drawn again, so map changes cannot exhaust the renderer's mesh slots.
+constexpr int kPersistentMeshUnusedFrameLimit = 1800;
 
 // The GS guard band reaches 10% past the screen on each side; the six-plane clip keeps what lies inside it.
 constexpr float kGuardScale = 1.1f;
@@ -124,8 +128,9 @@ void ReleaseMesh(mgVisualFaceMesh &mesh) {
     }
 }
 
-// Fix and Motion faces are built once during load and cannot be rebuilt, so their CPU copy is kept until the
-// renderer exists rather than being dropped.
+// Fix and Motion faces are built once during load and cannot be rebuilt, so their CPU copy is kept: it uploads
+// the GPU mesh once the renderer exists, again after the sweep released it, and draws the face immediately if
+// no mesh slot is free.
 void UploadIfReady(FaceEntry &entry) {
     mgVisualFaceMesh &mesh = *entry.mesh;
     if (!entry.persistent || mesh.mesh != gfx::kNullMesh || mesh.indices.empty() ||
@@ -134,8 +139,6 @@ void UploadIfReady(FaceEntry &entry) {
     }
 
     mesh.mesh = gfx::CreateMesh(mesh.vertices, mesh.indices);
-    std::vector<gfx::Vertex3D>().swap(mesh.vertices);
-    std::vector<uint32_t>().swap(mesh.indices);
 }
 
 } // namespace
@@ -241,7 +244,15 @@ void mgVisualPortSweep() {
 
     auto &table = FaceTable();
     for (auto it = table.begin(); it != table.end();) {
-        if (it->second.persistent || frame - it->second.last_frame <= kFaceUnusedFrameLimit) {
+        const int unused = frame - it->second.last_frame;
+        if (it->second.persistent) {
+            if (unused > kPersistentMeshUnusedFrameLimit) {
+                ReleaseMesh(*it->second.mesh);
+            }
+            ++it;
+            continue;
+        }
+        if (unused <= kFaceUnusedFrameLimit) {
             ++it;
             continue;
         }
