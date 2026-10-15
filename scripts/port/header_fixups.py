@@ -98,6 +98,12 @@ UNIT_FIXUPS = [
     printf("data memory size = %d kbyte", (data_size - 210128) * 16 / 1024);""",
      """    TotalDataBuff.stSetBuffer(&main_stack->stack[main_stack->stack_used], data_size - 270128);
     printf("data memory size = %d kbyte", (data_size - 270128) * 16 / 1024);"""),
+    # A list of eight lines or fewer leaves no room to scroll, and the scroll bar's step divides 0 by 0.
+    # The PS2's FPU gives FLT_MAX for it, which times the top line (0) puts the bar at the top of its
+    # track. On the host it is NaN, which stays in the bar's position and threw the Place and Culture
+    # lists' bars off their track. Divide only when there is somewhere to scroll.
+    ("editmenu.cpp", "            float rate = space / (num - GEORAMA_LIST_LINE_NUM);",
+     "            float rate = num > GEORAMA_LIST_LINE_NUM ? space / (num - GEORAMA_LIST_LINE_NUM) : 0.0f;"),
     ("editloop.cpp", """    main_stack->Alloc(data_size - 210128);
     MenuBuffer__2.stSetBuffer(read_buffer = main_stack->stAlloc64(200000), 200000);
     read_buffer_end = read_buffer + 200000;""",
