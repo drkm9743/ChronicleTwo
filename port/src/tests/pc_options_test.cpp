@@ -45,6 +45,7 @@ TEST(PcOptions, RequestedSettingsHaveUniqueRowsAndRoundTripTheirEdits) {
         "input.stick_invert_y",
         "input.glyphs",
         "input.glyph_device",
+        "game.start_skips_cutscenes",
     };
     std::set<std::string> actual;
     for (const auto &page : options::Pages()) {

@@ -408,6 +408,7 @@ Writes are atomic: the file is written as `config.json.tmp` and renamed over `co
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
 | `game.debug_mode` | bool | false | | the boot debug unlock, and the pad-1 chord; see [DEBUG.md](DEBUG.md) |
+| `game.start_skips_cutscenes` | bool | false | | `true`: Start skips a skippable cutscene at once (**Start skips cutscenes** in Controls); `false` keeps the pause screen, where Triangle skips |
 | `video.present_mode` | string | fifo | fifo, mailbox, immediate | Vulkan present mode |
 | `video.interpolation` | bool | true | | interpolate display frames between ticks |
 | `video.max_fps` | number | 0 | 0 or more | display frame cap; 0 is unlimited |

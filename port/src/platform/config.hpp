@@ -20,6 +20,8 @@ struct Config : HostSettings {
     float        ui_scale = 1.0f;
     bool         font_sharp = false;
     bool         mouse_fixed_look = true;
+    // game.start_skips_cutscenes: Start skips a skippable cutscene instead of opening the pause screen.
+    bool start_skips_cutscenes = false;
     // audio.robot_voice "controller": the Ridepod's lines play on a DualSense speaker when one is found.
     bool robot_voice_controller = false;
     // audio.controller_volume: gain on the controller speaker, on top of the master volume.

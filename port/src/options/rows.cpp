@@ -174,6 +174,7 @@ std::span<const Page> Pages() {
                          Choice<&Config::glyphs_new>("input.glyphs", "Button symbols", "PC settings prompts. Other menus keep the game art.", {"Original", "New"}),
                          Choice<&Config::glyph_device>("input.glyph_device", "Glyph style", "Auto follows the last device used.\nKeyboard prompts follow your current bindings.", {"Auto", "PS3", "PS4", "PS5", "PS5 Color", "Xbox", "Switch", "Steam Deck", "Steam Controller", "Keyboard"}),
                          Choice<&Config::mouse_zoom>("input.mouse_zoom", "Mouse wheel zoom", "Wheel changes camera distance while walking.\nMenus use the wheel for selection instead.", {"Off", "On"}),
+                         Choice<&Config::start_skips_cutscenes>("game.start_skips_cutscenes", "Start skips cutscenes", "On: Start skips a skippable cutscene at once.\nOff: Start pauses it; Triangle skips from there.", {"Off", "On"}),
                          Choice<&Config::mouse_fixed_look>("input.mouse_fixed_look", "Fixed camera mouse look", "Gently look around fixed-camera rooms.\nThe view returns when the mouse rests.", {"Off", "On"}),
                      }},
         {"Bindings", Bindings()           },

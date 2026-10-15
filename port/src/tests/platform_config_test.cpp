@@ -110,6 +110,7 @@ TEST_F(PlatformConfig, FullFileRoundTrips) {
     full.font_sharp = true;
     full.robot_voice_controller = true;
     full.controller_volume = 1.5f;
+    full.start_skips_cutscenes = true;
 
     ASSERT_TRUE(ConfigParse(ConfigSerialize(full)) == full);
 
