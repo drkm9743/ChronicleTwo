@@ -72,6 +72,11 @@ bool ready = false;
 bool frame_open = false;
 bool gfx_open = false;
 bool recording = false;
+// Retail's DATE tests the top bit of the frame's alpha; the port keeps that bit in the stencil,
+// set up by mgPortBeginDestAlphaMask and valid until the frame ends or shadows take the stencil.
+constexpr uint8_t kDestAlphaBit = 0x80;
+bool dest_alpha_valid = false;
+bool dest_alpha_write = false;
 bool cut_next_tick = true;
 bool cut_camera_next_tick = true;
 unsigned long long      camera_generation = 0;
@@ -699,6 +704,39 @@ void mgPortApplyTest(gfx::DrawState &state, uint64_t test) {
     state.alpha_func = static_cast<gfx::AlphaFunc>(reg.ATST);
     state.alpha_ref = static_cast<uint8_t>(reg.AREF);
     state.depth_test = reg.ZTE != 0 ? static_cast<gfx::DepthTest>(reg.ZTST) : gfx::DepthTest::Always;
+
+    if (dest_alpha_write) {
+        // The mask pieces draw with alpha 0 and leave the colour as it is: only the bit changes.
+        const gfx::StencilFace face{gfx::CompareOp::Always, gfx::StencilOp::Keep, gfx::StencilOp::Replace,
+                                    gfx::StencilOp::Keep, 0x00, 0xFF, kDestAlphaBit};
+        state.alpha_test = false;
+        state.stencil_test = true;
+        state.stencil_front = face;
+        state.stencil_back = face;
+        state.color_write_mask = 0;
+    } else if (dest_alpha_valid && reg.DATE != 0) {
+        // DATM 1 passes where the destination alpha's top bit is set, DATM 0 where it is clear.
+        const gfx::StencilFace face{gfx::CompareOp::Equal, gfx::StencilOp::Keep, gfx::StencilOp::Keep,
+                                    gfx::StencilOp::Keep,  reg.DATM != 0 ? kDestAlphaBit : uint8_t{0},
+                                    kDestAlphaBit,         0x00};
+        state.stencil_test = true;
+        state.stencil_front = face;
+        state.stencil_back = face;
+    }
+}
+
+void mgPortBeginDestAlphaMask() {
+    if (!gfx_open) {
+        return;
+    }
+
+    gfx::ClearStencil(kDestAlphaBit, nullptr);
+    dest_alpha_valid = true;
+    dest_alpha_write = true;
+}
+
+void mgPortEndDestAlphaMask() {
+    dest_alpha_write = false;
 }
 
 void mgPortApplyZbuf(gfx::DrawState &state, uint64_t zbuf) {
@@ -1211,6 +1249,8 @@ PORT_OVERRIDE void mgBeginFrame(mgCDrawManager *manager) {
 
     manager->texture_manager = &mgTexManager;
     manager->render_info = &mgRenderInfo;
+    dest_alpha_valid = false;
+    dest_alpha_write = false;
     mgTimeFrameBegin();
     static const CScene    *last_scene = nullptr;
     static const mgCCamera *last_camera = nullptr;
@@ -1831,6 +1871,9 @@ PORT_OVERRIDE void mgBeginDrawShadow(mgCTexture *shadow, mgCTexture *unused) {
     }
 
     // The counts live in the main target's stencil, which the renderer does not clear per frame.
+    // They take the stencil over from a destination alpha mask.
+    dest_alpha_valid = false;
+    dest_alpha_write = false;
     if (gfx_open) {
         gfx::ClearStencil(0, nullptr);
     }

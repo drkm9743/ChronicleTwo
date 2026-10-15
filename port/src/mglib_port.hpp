@@ -113,6 +113,10 @@ void mgPortApplyAlpha(gfx::DrawState &state, uint64_t alpha);
 void mgPortApplyTexa(gfx::DrawState &state, uint64_t texa);
 void mgPortApplyScissor(gfx::DrawState &state, const int scissor[4]);
 void mgPortApplyDrawEnv(gfx::DrawState &state, const mgCDrawEnv &env);
+// Draws between these write a cleared destination alpha bit where they cover, over a frame cleared
+// to set; for the rest of the frame (until shadows) DATE draws test that bit.
+void mgPortBeginDestAlphaMask();
+void mgPortEndDestAlphaMask();
 gfx::Wrap mgPortWrapU(uint64_t clamp);
 gfx::Wrap mgPortWrapV(uint64_t clamp);
 gfx::Filter mgPortFilter(uint64_t tex1);
