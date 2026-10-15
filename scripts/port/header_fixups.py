@@ -84,6 +84,10 @@ UNIT_FIXUPS = [
     ("inventmn.cpp", "\ninline CMenuInvent::CMenuInvent() {", "\nCMenuInvent::CMenuInvent() {"),
     ("editeff.cpp", "\ninline CMapParts::CMapParts() { Initialize(); }", "\n"),
     ("editmap.cpp", "\ninline CMapParts::CMapParts() { Initialize(); }", "\n"),
+    # Host pointers move CMenuPosDataForm::ambient off the 16-byte boundary retail kept it on, so the
+    # quadword copy into it faults when a sphere is fused into the weapon being viewed.
+    ("menusys.cpp", "*(u_long128 *) color = *(u_long128 *) fusion_ambient;",
+     "memcpy(color, fusion_ambient, sizeof(fusion_ambient));"),
     ("dng_debug.cpp", "\nvoid CTreasureBox::Initialize() {", "\ninline void CTreasureBox::Initialize() {"),
     # The dungeon menu carves its memory from these 200000 quadwords and gives the invention menu's
     # model reads (LOAD STACK) whatever is left. Host objects are larger than retail's, so with Max's
