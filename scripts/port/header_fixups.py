@@ -107,6 +107,15 @@ UNIT_FIXUPS = [
     # geostone announcement then scribbled on and drew as message windows, crashing later in the town
     # or the event. Two more slots, never filled, keep the walk on null entries.
     ("editmenu.cpp", "static CDC2Mes *DownLoadMes[6];", "static CDC2Mes *DownLoadMes[8];"),
+    # MenuGeoramaPaintSelect leaves the menu for paint mode only when paint_return is non-zero, and
+    # retail sets it only when the menu reopens from paint mode; the constructor leaves it alone. On
+    # the PS2 the menu stack still holds earlier data there, so picking a colour on the paint page
+    # always went to paint mode. The port's arena memory is often fresh zeros, which left the colour
+    # picked and the menu open, so no colour could be painted. Start it non-zero as retail found it.
+    ("editmenu.cpp", """    CMenuGeoPt = new (MenuGeoramaStack.Alloc(0x1B92)) CMenuGeorama;
+""", """    CMenuGeoPt = new (MenuGeoramaStack.Alloc(0x1B92)) CMenuGeorama;
+    CMenuGeoPt->paint_return = 1;
+"""),
     ("editloop.cpp", """    main_stack->Alloc(data_size - 210128);
     MenuBuffer__2.stSetBuffer(read_buffer = main_stack->stAlloc64(200000), 200000);
     read_buffer_end = read_buffer + 200000;""",
