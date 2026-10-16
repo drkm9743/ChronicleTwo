@@ -37,6 +37,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dc2_hd import HDGlyphs  # noqa: E402
+from dc2_strokes import strokes_for  # noqa: E402
 
 CELL_W = 16  # Texels per font cell; half-width glyphs use the left 8.
 CELL_H = 20
@@ -315,8 +316,8 @@ def build(spec: FontSpec, style: str, glyphs: list[Glyph], pages: list[np.ndarra
             contours = [[("M", loop[0])] + [("L", p) for p in loop[1:]] for loop in pixel_contours(alpha >= 128)]
             dx, advance = 0.0, width
         else:
-            # Full-width symbols (arrows, circles) are not pen strokes, so HD keeps their traced edges.
-            hd_glyph = style == "HD" and not glyph.full and glyph.char not in "ª"
+            # Full-width symbols without a drawing in dc2_strokes keep their traced edges.
+            hd_glyph = style == "HD" and (not glyph.full or strokes_for(glyph.char) is not None) 
             contours = hd.contours(glyph.char) if hd_glyph else smooth_contours(alpha)
             if not contours:
                 continue

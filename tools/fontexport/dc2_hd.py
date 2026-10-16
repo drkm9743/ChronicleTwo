@@ -16,6 +16,8 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 from skimage.morphology import skeletonize
 
+from dc2_strokes import strokes_for  # noqa: F401 (also used by the font builder)
+
 SCALE = 16  # Working resolution: pixels per texel.
 PAD = 2  # Texels of padding around the cell.
 
@@ -179,43 +181,18 @@ def auto_mask(alpha: np.ndarray, pen: float) -> np.ndarray | None:
     return None if best is None else _to_canvas(best)
 
 
-# --- Hand-drawn centre lines -------------------------------------------------------------------
-# Glyphs whose retail versions are too cramped (8 texels for four diagonals) for the skeleton to
-# recover. Coordinates are texels in the cell (y down, baseline 16); the cap height runs 5.5-14.8
-# and the x-height 8.5-14.8 on the centre line. These are drawn for this tool, not copied.
-
-CAP_T, X_T, BASE = 5.5, 8.5, 14.8
-
-
-def _arc(cx, cy, rx, ry, start, end, steps=48, power=2.0):
-    """Superellipse arc; angles in degrees, 0 = right, 90 = down (y down)."""
-    out = []
-    for t in np.linspace(np.radians(start), np.radians(end), steps):
-        c, s = np.cos(t), np.sin(t)
-        out.append((cx + rx * np.sign(c) * abs(c) ** (2 / power), cy + ry * np.sign(s) * abs(s) ** (2 / power)))
-    return out
-
-
-MANUAL = {
-    "W": [[(1.2, CAP_T), (2.7, BASE), (4.6, 8.4), (6.5, BASE), (8.0, CAP_T)]],
-    "w": [[(1.0, X_T), (2.5, BASE), (4.4, 10.2), (6.3, BASE), (7.8, X_T)]],
-    "M": [[(1.2, BASE), (1.2, CAP_T), (4.4, 11.6), (7.6, CAP_T), (7.6, BASE)]],
-    "N": [[(1.2, BASE), (1.2, CAP_T), (7.0, BASE), (7.0, CAP_T)]],
-    "m": [[(1.2, X_T), (1.2, BASE)],
-          [(1.2, 10.2)] + _arc(2.85, 10.2, 1.65, 1.7, 180, 360, 24) + [(4.5, BASE)],
-          [(4.5, 10.2)] + _arc(6.15, 10.2, 1.65, 1.7, 180, 360, 24) + [(7.8, BASE)]],
-    "%": [_arc(2.5, 7.4, 1.3, 1.9, 0, 360), _arc(6.5, 12.9, 1.3, 1.9, 0, 360), [(7.4, CAP_T), (1.6, BASE)]],
-    "@": [_arc(5.0, 10.15, 3.8, 4.65, 30, 340, 64, 2.4) + [(8.6, 8.6), (8.6, 12.0)] + _arc(7.6, 12.0, 1.0, 1.0, 0, 90, 12),
-          _arc(5.3, 10.6, 1.65, 1.75, 0, 360, 48)],
-}
-# Glyph made of the O plus a tail, and ligatures made of two reconstructed glyphs.
-TAILS = {"Q": ("O", [[(4.9, 12.4), (7.6, 15.9)]])}
+# Ligatures made of two HD glyphs; the hand-drawn glyphs are in dc2_strokes.py.
 LIGATURES = {"æ": ("a", "e"), "œ": ("o", "e"), "Æ": ("A", "E"), "Œ": ("O", "E")}
 
 
 def manual_mask(strokes, pen: float, dx: float = 0.0) -> np.ndarray:
     shapes = []
     for stroke in strokes:
+        if isinstance(stroke, tuple):  # A dot, a little rounder than the pen.
+            centre = ((stroke[1] + PAD + dx) * SCALE, (stroke[2] + PAD) * SCALE)
+            radius = stroke[3] if len(stroke) > 3 else pen * 0.62
+            shapes.append(Point(centre).buffer(radius * SCALE, quad_segs=16))
+            continue
         line = [((x + PAD + dx) * SCALE, (y + PAD) * SCALE) for x, y in stroke]
         shapes.append(LineString(line).buffer(pen * SCALE / 2, cap_style="round", join_style="round", quad_segs=16))
     return _draw_shape(unary_union(shapes), (CANVAS_W * SCALE, CANVAS_H * SCALE))
@@ -246,12 +223,8 @@ class HDGlyphs:
     def mask(self, char: str) -> np.ndarray | None:
         if char in self.cache:
             return self.cache[char]
-        if char in MANUAL:
-            result = manual_mask(MANUAL[char], self.pen)
-        elif char in TAILS:
-            base, strokes = TAILS[char]
-            body = self.mask(base)
-            result = None if body is None else body | manual_mask(strokes, self.pen)
+        if (strokes := strokes_for(char)) is not None:
+            result = manual_mask(strokes, self.pen)
         elif char in LIGATURES:
             first, second = (self.mask(c) for c in LIGATURES[char])
             if first is None or second is None:
