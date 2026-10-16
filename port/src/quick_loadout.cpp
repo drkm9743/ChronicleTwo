@@ -58,8 +58,9 @@ struct Rect {
 constexpr int  kPanelX = 42;
 constexpr int  kPanelOffsetY = 66;
 constexpr int  kRidepodOffsetY = 54;
-constexpr Rect kBox = {0, 8, 176, 134};
-constexpr Rect kTitleBar = {20, -1, 136, 25};
+constexpr Rect kBox = {0, 16, 176, 126};
+// The title's plate, standing on the box's top edge as the EXP plate does on its box.
+constexpr Rect kTitleBar = {7, -1, 128, 18};
 // Square, Triangle, Cross, Circle.
 constexpr Rect kSlotRect[kSlots] = {{11, 26, 76, 50}, {89, 26, 76, 50}, {11, 80, 76, 50}, {89, 80, 76, 50}};
 constexpr int  kDiscSize = 24;
@@ -79,6 +80,10 @@ constexpr int kBoxJoinX = 6; // where the top left corner's first row turns into
 constexpr int kBoxBolt = 6, kBoxBoltX = 2, kBoxBoltTopU = 375, kBoxBoltTopV = 155, kBoxBoltBottomU = 289,
               kBoxBoltBottomV = 182;
 constexpr int kBlackU = 298, kBlackV = 165;
+// The "EXP" plate above that box: its left and right sides, three texels each, a plain column between them past the
+// engraved letters, three rows of top edge, the rows of plate between and the row that runs into the box.
+constexpr int kPlateLeftU = 295, kPlateMiddleU = 298, kPlateRightU = 319, kPlateSide = 3;
+constexpr int kPlateV0 = 146, kPlateTop = 3, kPlateMiddleV = 149, kPlateMiddle = 5, kPlateBottomV = 154;
 // ...and the active item circles, 40 across: the left half of the first, the right half of the last (their other
 // halves hold the joints between them).
 constexpr int kCircleLeftU = 236, kCircleLeftV = 55, kCircleRightU = 364, kCircleRightV = 96, kCircleHalf = 20;
@@ -378,8 +383,9 @@ void DrawPanel(int left, int top, uint8_t alpha) {
     Piece(sprite, right + side - gold, box.y + kBoxCorner, gold, box.h - 2 * kBoxCorner, kBoxU0 + gold - 1,
           kBoxVMiddle, -gold, 1);
     // The top left corner's first row carries the join to the bar above the EXP box: the top side's shadow instead.
+    // The top left one is where the title's plate stands.
+    Piece(sprite, box.x + kBoxJoinX, box.y + box.h - 1, side - kBoxJoinX, 1, kBoxUMiddle, kBoxV0, 1, 1);
     for (const int y : {box.y, box.y + box.h - 1}) {
-        Piece(sprite, box.x + kBoxJoinX, y, side - kBoxJoinX, 1, kBoxUMiddle, kBoxV0, 1, 1);
         Piece(sprite, right, y, side - kBoxJoinX, 1, kBoxUMiddle, kBoxV0, 1, 1);
     }
     Piece(sprite, right + kBoxBoltX, box.y + 1, kBoxBolt, kBoxBolt + 1, kBoxBoltTopU, kBoxBoltTopV, kBoxBolt,
@@ -389,14 +395,19 @@ void DrawPanel(int left, int top, uint8_t alpha) {
     for (const Rect &slot : kSlotRect) {
         Rounded(sprite, {left + slot.x, top + slot.y, slot.w, slot.h}, kCircleHalf);
     }
-    sprite.End();
 
-    // The title bar, shrunk from the circles.
-    sprite.Begin(MG_PRIM_SPRITE);
-    sprite.Bilinear(1);
-    sprite.Texture(TEX_SystenFrame);
-    sprite.Color(0x80, 0x80, 0x80, alpha);
-    Rounded(sprite, {left + kTitleBar.x, top + kTitleBar.y, kTitleBar.w, kTitleBar.h}, kTitleBar.h / 2);
+    // The title's plate, the EXP plate widened and heightened, texel for texel at its sides and top.
+    const Rect plate = {left + kTitleBar.x, top + kTitleBar.y, kTitleBar.w, kTitleBar.h};
+    const int  middle_h = plate.h - kPlateTop - 1, middle_w = plate.w - 2 * kPlateSide;
+    const int  columns[3][3] = {{plate.x, kPlateSide, kPlateLeftU},
+                                {plate.x + kPlateSide, middle_w, kPlateMiddleU},
+                                {plate.x + plate.w - kPlateSide, kPlateSide, kPlateRightU}};
+    for (const auto &c : columns) {
+        const int tw = c[2] == kPlateMiddleU ? 1 : kPlateSide;
+        Piece(sprite, c[0], plate.y, c[1], kPlateTop, c[2], kPlateV0, tw, kPlateTop);
+        Piece(sprite, c[0], plate.y + kPlateTop, c[1], middle_h, c[2], kPlateMiddleV, tw, kPlateMiddle);
+        Piece(sprite, c[0], plate.y + plate.h - 1, c[1], 1, c[2], kPlateBottomV, tw, 1);
+    }
     sprite.End();
 }
 
@@ -437,7 +448,7 @@ void DrawButtons(int left, int top, uint8_t alpha) {
     sprite.End();
 }
 
-// "QUICK LOADOUT" in the game's own font, white with its black outline, in the middle of the title bar.
+// "QUICK LOADOUT" in the game's own font, engraved in the middle of the title's plate.
 void DrawTitle(float x, float y, uint8_t alpha) {
     static const char kTitle[] = "QUICK LOADOUT";
     CFont font;
@@ -447,8 +458,9 @@ void DrawTitle(float x, float y, uint8_t alpha) {
     // stand apart from its word.
     font.SetDrawSize(16, 20);
     font.SetClearance(16, 20);
-    font.SetFuchi(FUCHI_OUTLINE);
-    font.SetColor(0x80, 0x80, 0x80, alpha);
+    // Engraved, as the EXP plate's letters: dark brown with a light edge down and to the right.
+    font.SetFuchi(FUCHI_SHADOW_WHITE);
+    font.SetColor(0x1F, 0x11, 0x08, alpha);
     constexpr float kCell = 8.0f; // a half-width letter's cell
     auto advance = [](char c) { return c == 'I' ? 5.0f : c == ' ' ? 7.0f : 9.0f; };
     float width = 0.0f;
