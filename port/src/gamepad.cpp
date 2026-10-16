@@ -1,10 +1,12 @@
 #include "common.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <vector>
 
+#include "dualsense_haptics.hpp"
 #include "gamepad.hpp"
 #include "gamepad_port.hpp"
 #include "mainloop.hpp"
@@ -98,8 +100,9 @@ PORT_OVERRIDE void CGamePad::UpDate() {
     SwitchGamePadThread();
 }
 
-// Retail counts the motors down here and sends them to pad 0 alone; the port sends them to every
-// open pad, since a DualSense behind DSX or Steam Input shows up twice (see pad_rumble.hpp).
+// Retail counts the motors down here and sends them to pad 0 alone. The port plays them on a
+// DualSense's actuators when it can (dualsense_haptics.hpp), and otherwise sends them to every open
+// pad, since a DualSense behind DSX or Steam Input shows up twice (see pad_rumble.hpp).
 PORT_OVERRIDE void CGamePad::Step(int elapsed) {
     vibration_elapsed += elapsed;
     if (vibration_elapsed > 1000) {
@@ -120,7 +123,17 @@ PORT_OVERRIDE void CGamePad::Step(int elapsed) {
             status.vibration[motor] = 0;
         }
     }
-    PortPadRumble(status.vibration[PAD_MOTOR_SMALL] != 0, status.vibration[PAD_MOTOR_LARGE]);
+    const bool         small = status.vibration[PAD_MOTOR_SMALL] != 0;
+    const std::uint8_t large = status.vibration[PAD_MOTOR_LARGE];
+    HapticsPollGame();
+    if (HapticsActive()) {
+        // SDL's emulated rumble switches the pad's audio haptics off while it runs.
+        PortPadRumble(false, 0);
+        HapticsSetMotors(small, large);
+    } else {
+        HapticsSetMotors(false, 0);
+        PortPadRumble(small, large);
+    }
 }
 
 PORT_OVERRIDE void CGamePad::MenuModeOn(int threshold) {
