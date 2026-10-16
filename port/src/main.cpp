@@ -340,7 +340,10 @@ PORT_OVERRIDE int main(int argc, const char **argv) {
 }
 
 #ifdef _WIN32
+void CrashReportInstall();
+
 int wmain(int argc, wchar_t **wide_argv) {
+    CrashReportInstall();
     std::vector<std::string>  args;
     std::vector<const char *> argv;
     for (int i = 0; i < argc; ++i) {
