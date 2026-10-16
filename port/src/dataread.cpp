@@ -38,6 +38,10 @@ namespace fs = std::filesystem;
 // Replacements own the state they touch: a port unit cannot see ps2/src's statics, so the current
 // directory, the background queue and the file cache live here.
 
+#ifdef _WIN32
+void CrashReportNote(const char *text);
+#endif
+
 namespace {
 
 constexpr std::size_t kSector = DATAREAD_SECTOR_SIZE;
@@ -187,6 +191,13 @@ int ReadUnregistered(const IndexedFile &file, void *buffer) {
         return -1;
     }
     std::size_t size = static_cast<std::size_t>(*sized);
+#ifdef _WIN32
+    {
+        char note[512];
+        std::snprintf(note, sizeof note, "%s into %p, %zu bytes", file.relative.c_str(), buffer, size);
+        CrashReportNote(note);
+    }
+#endif
     if (!vfs::ReadInto(file.file, buffer, size)) {
         return -1;
     }

@@ -12,6 +12,10 @@
 
 namespace {
 
+// What the game was doing when it crashed, set by the loaders (the file being read, its buffer and size).
+char g_note[512] = "";
+volatile LONG g_reports = 0;
+
 void ModuleOf(DWORD64 address, wchar_t *name, DWORD size, DWORD64 *base) {
     HMODULE module = nullptr;
     name[0] = 0;
@@ -43,6 +47,14 @@ void Report(FILE *out, EXCEPTION_POINTERS *info) {
                      reinterpret_cast<void *>(record->ExceptionInformation[1]));
     }
     std::fprintf(out, "\nthread %lu\n", static_cast<unsigned long>(GetCurrentThreadId()));
+    const CONTEXT &regs = *info->ContextRecord;
+    std::fprintf(out, "rax %016llX rbx %016llX rcx %016llX rdx %016llX\nrsi %016llX rdi %016llX rsp %016llX rbp %016llX\n"
+                      "r8  %016llX r9  %016llX r14 %016llX r15 %016llX\n",
+                 regs.Rax, regs.Rbx, regs.Rcx, regs.Rdx, regs.Rsi, regs.Rdi, regs.Rsp, regs.Rbp, regs.R8, regs.R9,
+                 regs.R14, regs.R15);
+    if (g_note[0] != 0) {
+        std::fprintf(out, "last read: %s\n", g_note);
+    }
 
     CONTEXT context = *info->ContextRecord;
     for (int frame = 0; frame < 64 && context.Rip != 0; ++frame) {
@@ -91,9 +103,43 @@ LONG WINAPI OnUnhandled(EXCEPTION_POINTERS *info) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+// First chance, before any frame's handler can swallow or redirect it: an access violation is reported
+// here even when the unhandled filter never runs. Handled ones are rare, so the first few are kept.
+LONG WINAPI OnFirstChance(EXCEPTION_POINTERS *info) {
+    if (info->ExceptionRecord->ExceptionCode != EXCEPTION_ACCESS_VIOLATION) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    const LONG count = InterlockedIncrement(&g_reports);
+    if (count > 4) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    std::fprintf(stderr, "(first chance %ld)", static_cast<long>(count));
+    Report(stderr, info);
+
+    wchar_t path[MAX_PATH];
+    DWORD   length = GetModuleFileNameW(nullptr, path, MAX_PATH);
+    while (length > 0 && path[length - 1] != L'\\' && path[length - 1] != L'/') {
+        --length;
+    }
+    if (length > 0 && length + 20 < MAX_PATH) {
+        std::wcscpy(path + length, L"crash_report.txt");
+        if (FILE *file = _wfopen(path, count == 1 ? L"w" : L"a")) {
+            std::fprintf(file, "(first chance %ld)", static_cast<long>(count));
+            Report(file, info);
+            std::fclose(file);
+        }
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 } // namespace
 
+void CrashReportNote(const char *text) {
+    std::snprintf(g_note, sizeof g_note, "%s", text != nullptr ? text : "");
+}
+
 void CrashReportInstall() {
+    AddVectoredExceptionHandler(1, OnFirstChance);
     SetUnhandledExceptionFilter(OnUnhandled);
     // The last lines before a crash reach crash.out.log too.
     std::setvbuf(stdout, nullptr, _IONBF, 0);
