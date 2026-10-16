@@ -76,7 +76,11 @@ SDL_AudioDeviceID FindDevice() {
         const std::string lower = Lower(name);
         for (const char *match : kDeviceNames) {
             if (lower.find(match) != std::string::npos) {
-                std::fprintf(stderr, "controller speaker: using \"%s\"\n", name);
+                SDL_AudioSpec native{};
+                int           frames = 0;
+                SDL_GetAudioDeviceFormat(devices[i], &native, &frames);
+                std::fprintf(stderr, "controller speaker: using \"%s\" (%d channels, %d Hz)\n", name, native.channels,
+                             native.freq);
                 found = devices[i];
                 break;
             }

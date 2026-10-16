@@ -10,6 +10,7 @@
 #include "mainloop.hpp"
 #include "menu_mouse.hpp"
 #include "menu_mouse_item.hpp"
+#include "pad_rumble.hpp"
 #include "platform/input.hpp"
 #include "platform/paths.hpp"
 #include "test_hooks.hpp"
@@ -95,6 +96,31 @@ PORT_OVERRIDE void CGamePad::UpDate() {
         Neutral(previous_pad[1]);
     }
     SwitchGamePadThread();
+}
+
+// Retail counts the motors down here and sends them to pad 0 alone; the port sends them to every
+// open pad, since a DualSense behind DSX or Steam Input shows up twice (see pad_rumble.hpp).
+PORT_OVERRIDE void CGamePad::Step(int elapsed) {
+    vibration_elapsed += elapsed;
+    if (vibration_elapsed > 1000) {
+        vibration_elapsed = 0;
+        StopVibration();
+        return;
+    }
+    PAD_STATUS &status = pad[0];
+    if (!vibration_enabled) {
+        status.vibration[PAD_MOTOR_SMALL] = 0;
+        status.vibration[PAD_MOTOR_LARGE] = 0;
+    }
+    for (int motor : {PAD_MOTOR_SMALL, PAD_MOTOR_LARGE}) {
+        if (status.vibration_timer[motor] > 0) {
+            status.vibration_timer[motor] -= elapsed;
+        } else {
+            status.vibration_timer[motor] = 0;
+            status.vibration[motor] = 0;
+        }
+    }
+    PortPadRumble(status.vibration[PAD_MOTOR_SMALL] != 0, status.vibration[PAD_MOTOR_LARGE]);
 }
 
 PORT_OVERRIDE void CGamePad::MenuModeOn(int threshold) {
