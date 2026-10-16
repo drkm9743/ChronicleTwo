@@ -8,18 +8,18 @@ with data/ and port_data/, or a data.zip) and writes .ttf files locally.
 Fonts it knows about:
   eu  FontTex_2_0 + fonttbl_2.bin, the PAL French/German/Italian/Spanish font:
       ASCII, Latin-1 accents (À-ÿ, ¡ ¿ ª º ß), Œ œ and the symbol glyphs.
-  en  FontTex_1_0 + fonttbl_1.bin, the English font: ASCII and the kana and
-      symbols that fit on its first page.
-  ko  FontTex_6_0/6_1 + fonttbl_6.bin, the Korean font: ASCII and the Hangul
-      syllables the game's text uses (not the whole Hangul block).
+  en  FontTex_1_0 + fonttbl_1.bin, the English font: ASCII and the symbols on
+      its first page (its kana are left out; the port has no Japanese).
 
-Each font is written in two styles:
+Each font is written in three styles:
   Pixel   every texel becomes a square, so it matches the game exactly at
           whole multiples of 20 px and keeps the game's fixed 8 px advance.
   Smooth  the antialiased texels are upsampled and traced with potrace into
           curves, with proportional spacing for use as an ordinary font.
+  HD      the strokes are rebuilt from their centre lines with one constant pen
+          width (see dc2_hd.py), for clean shapes at any size. EU font only.
 
-Requires: pip install fonttools potracer numpy pillow
+Requires: pip install fonttools potracer numpy pillow scipy scikit-image shapely
 """
 
 from __future__ import annotations
@@ -34,6 +34,9 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dc2_hd import HDGlyphs  # noqa: E402
 
 CELL_W = 16  # Texels per font cell; half-width glyphs use the left 8.
 CELL_H = 20
@@ -68,8 +71,6 @@ class FontSpec:
 SPECS = {
     "eu": FontSpec("eu", "DC2 Chronicle EU", "meswin/fonttbl_2.bin", ["meswin/fonttex_2_0.tm2.img/"]),
     "en": FontSpec("en", "DC2 Chronicle EN", "meswin/fonttbl_1.bin", ["meswin/fonttex_1_0.tm2.img/"]),
-    "ko": FontSpec("ko", "DC2 Chronicle KO", "meswin/fonttbl_6.bin",
-                   ["meswin/fonttex_6_0.tm2.img/", "meswin/fonttex_6_1.tm2.img/"]),
 }
 
 
@@ -107,13 +108,14 @@ def load_table(data: bytes) -> tuple[int, int, list[bytes]]:
 def decode_code(key: str, code: bytes) -> str | None:
     if code[1] == 0x20 and 0x20 <= code[0] <= 0x7E:
         return chr(code[0])
-    if key == "ko":
-        value = (code[0] << 8) | code[1]
-        return chr(value) if 0xAC00 <= value <= 0xD7A3 else None
     try:
-        return code.decode("cp932")
+        char = code.decode("cp932")
     except UnicodeDecodeError:
         return None
+    # The port only ships the Western languages, so kana and kanji are left out.
+    if len(char) != 1 or 0x3000 <= ord(char) <= 0x9FFF:
+        return None
+    return char
 
 
 def glyph_list(spec: FontSpec, table: bytes) -> list[Glyph]:
@@ -219,28 +221,19 @@ def _area(points) -> float:
     return sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:] + points[:1])) / 2
 
 
-def _inside(point, points) -> bool:
-    x, y = point
-    inside = False
-    for (x1, y1), (x2, y2) in zip(points, points[1:] + points[:1]):
-        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
-            inside = not inside
-    return inside
-
-
 def oriented(contours: list[list]) -> list[list]:
-    """Outer contours clockwise and holes counter-clockwise in font space (y up), by nesting depth."""
-    polygons = [_polygon(c) for c in contours]
-    result = []
-    for i, contour in enumerate(contours):
-        probe = polygons[i][0]
-        depth = sum(1 for j, other in enumerate(polygons) if j != i and _inside(probe, other))
-        # Texel space is y down, so a positive shoelace area there is clockwise on screen,
-        # which flips to counter-clockwise once y points up.
-        clockwise_in_font = _area(polygons[i]) < 0
-        want_clockwise = depth % 2 == 0
-        result.append(contour if clockwise_in_font == want_clockwise else _reverse(contour))
-    return result
+    """Outer contours clockwise in font space (y up), holes counter-clockwise.
+
+    Both potrace and pixel_contours already wind holes opposite to their outer
+    contours, so the largest contour (always an outer one) decides whether
+    everything needs reversing. Texel space is y down, so a negative shoelace
+    area there is clockwise once y points up.
+    """
+    if not contours:
+        return contours
+    areas = [_area(_polygon(c)) for c in contours]
+    largest = max(range(len(areas)), key=lambda i: abs(areas[i]))
+    return contours if areas[largest] < 0 else [_reverse(c) for c in contours]
 
 
 def _reverse(parts):
@@ -257,6 +250,22 @@ def _reverse(parts):
 
 
 # --- Font building ---------------------------------------------------------------------------
+
+
+def pen_weight(glyphs: list[Glyph], pages: list[np.ndarray]) -> float:
+    """One pen width (texels) for the whole font: the median stroke of the ASCII letters."""
+    from scipy import ndimage
+    from skimage.morphology import skeletonize
+
+    from dc2_hd import SCALE, _upsample
+
+    widths = []
+    for glyph in glyphs:
+        if glyph.char.isalpha() and ord(glyph.char) < 0x80 and (alpha := cell(pages, glyph)) is not None:
+            mask = _upsample(alpha) >= 128
+            if mask.any():
+                widths.append(2 * float(np.median(ndimage.distance_transform_edt(mask)[skeletonize(mask)])))
+    return 0.9 * float(np.median(widths)) / SCALE if widths else 1.0
 
 
 def draw(pen, contours, dx: float):
@@ -282,7 +291,11 @@ def build(spec: FontSpec, style: str, glyphs: list[Glyph], pages: list[np.ndarra
     cmap = {0x20: "space"}
     outlines = {}
     metrics = {}
-    space = 4 if style == "Smooth" else 8
+    space = 8 if style == "Pixel" else 4
+    hd = None
+    if style == "HD":
+        by_char = {g.char: g for g in glyphs}
+        hd = HDGlyphs(lambda c: cell(pages, by_char[c]) if c in by_char else None, pen_weight(glyphs, pages))
     metrics["space"] = (space * UNIT, 0)
     digit_width = 0.0
     for glyph in glyphs:
@@ -302,9 +315,13 @@ def build(spec: FontSpec, style: str, glyphs: list[Glyph], pages: list[np.ndarra
             contours = [[("M", loop[0])] + [("L", p) for p in loop[1:]] for loop in pixel_contours(alpha >= 128)]
             dx, advance = 0.0, width
         else:
-            contours = smooth_contours(alpha)
-            cols = np.nonzero(alpha.max(axis=0) >= 48)[0]
-            left, right = float(cols.min()), float(cols.max() + 1)
+            # Full-width symbols (arrows, circles) are not pen strokes, so HD keeps their traced edges.
+            hd_glyph = style == "HD" and not glyph.full and glyph.char not in "ª"
+            contours = hd.contours(glyph.char) if hd_glyph else smooth_contours(alpha)
+            if not contours:
+                continue
+            xs = [p[-1][0] for parts in contours for p in parts]
+            left, right = min(xs), max(xs)
             if glyph.char.isdigit() and code < 0x80:
                 # Tabular digits: every digit takes the widest one's advance, centred.
                 dx = 0.75 + (digit_width - (right - left)) / 2 - left
@@ -370,7 +387,7 @@ def main() -> int:
     parser.add_argument("source", type=Path, help="run directory (with data/ and port_data/) or data.zip")
     parser.add_argument("-o", "--out", type=Path, default=Path("fonts"), help="output directory")
     parser.add_argument("--font", choices=sorted(SPECS), action="append", help="font(s) to build (default: all)")
-    parser.add_argument("--style", choices=["Pixel", "Smooth"], action="append", help="style(s) (default: both)")
+    parser.add_argument("--style", choices=["Pixel", "Smooth", "HD"], action="append", help="style(s) (default: both)")
     args = parser.parse_args()
 
     source = Source(args.source)
@@ -384,7 +401,11 @@ def main() -> int:
             print(f"{key}: skipped, {error}", file=sys.stderr)
             continue
         glyphs = glyph_list(spec, table)
-        for style in args.style or ["Pixel", "Smooth"]:
+        for style in args.style or ["Pixel", "Smooth", "HD"]:
+            if style == "HD" and key != "eu":
+                # The English font is narrower and taller; its cramped glyphs would need their own redraws.
+                print(f"{key}: HD is only built for the EU font, which also covers English", file=sys.stderr)
+                continue
             out = args.out / f"{spec.family.replace(' ', '')}-{style}.ttf"
             count = build(spec, style, glyphs, pages, out)
             print(f"{out}: {count} characters")
