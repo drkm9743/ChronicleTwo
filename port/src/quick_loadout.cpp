@@ -79,7 +79,8 @@ constexpr int kBoxJoinX = 6; // where the top left corner's first row turns into
 // The bolts on the top right and bottom left corners.
 constexpr int kBoxBolt = 6, kBoxBoltX = 2, kBoxBoltTopU = 375, kBoxBoltTopV = 155, kBoxBoltBottomU = 289,
               kBoxBoltBottomV = 182;
-constexpr int kBlackU = 298, kBlackV = 165;
+// A black texel in the middle of a black patch, so that stretching it never reaches a neighbour.
+constexpr int kBlackU = 134, kBlackV = 204;
 // The "EXP" plate above that box: its left and right sides, three texels each, a plain column between them past the
 // engraved letters, three rows of top edge, the rows of plate between and the row that runs into the box.
 constexpr int kPlateLeftU = 295, kPlateMiddleU = 298, kPlateRightU = 319, kPlateSide = 3;
@@ -458,9 +459,9 @@ void DrawTitle(float x, float y, uint8_t alpha) {
     // stand apart from its word.
     font.SetDrawSize(16, 20);
     font.SetClearance(16, 20);
-    // Engraved, as the EXP plate's letters: dark brown with a light edge down and to the right.
-    font.SetFuchi(FUCHI_SHADOW_WHITE);
-    font.SetColor(0x1F, 0x11, 0x08, alpha);
+    // Engraved, as the EXP plate's letters: dark brown and heavy, each stroke with a light gold edge under it and to
+    // its right. Each pass draws the title once at an offset: the light edge first, then the letters, twice across.
+    font.SetFuchi(FUCHI_NONE);
     constexpr float kCell = 8.0f; // a half-width letter's cell
     auto advance = [](char c) { return c == 'I' ? 5.0f : c == ' ' ? 7.0f : 9.0f; };
     float width = 0.0f;
@@ -469,15 +470,23 @@ void DrawTitle(float x, float y, uint8_t alpha) {
     }
     int w = 0, h = 0;
     font.CalcDrawWH(const_cast<char *>("Q"), &w, &h);
-    float pen = x - width * 0.5f;
-    for (const char *c = kTitle; *c != 0; c++) {
-        char letter[2] = {*c, 0};
-        // A narrow letter keeps to the middle of the room it is given.
-        const float shift = (advance(*c) - kCell) * 0.5f;
-        if (*c != ' ') {
-            font.DrawDirect(letter, (int) (pen + (*c == 'I' ? shift : 0.0f) + 0.5f), (int) (y - h * 0.5f + 0.5f));
+    const struct {
+        int     dx, dy;
+        uint8_t r, g, b;
+    } passes[] = {{1, 1, 0x75, 0x6A, 0x58}, {2, 1, 0x75, 0x6A, 0x58}, {0, 0, 0x1F, 0x11, 0x08}, {1, 0, 0x1F, 0x11, 0x08}};
+    for (const auto &pass : passes) {
+        font.SetColor(pass.r, pass.g, pass.b, alpha);
+        float pen = x - (width + 1.0f) * 0.5f;
+        for (const char *c = kTitle; *c != 0; c++) {
+            char letter[2] = {*c, 0};
+            // A narrow letter keeps to the middle of the room it is given.
+            const float shift = (advance(*c) - kCell) * 0.5f;
+            if (*c != ' ') {
+                font.DrawDirect(letter, (int) (pen + (*c == 'I' ? shift : 0.0f) + 0.5f) + pass.dx,
+                                (int) (y - h * 0.5f + 0.5f) + pass.dy);
+            }
+            pen += advance(*c);
         }
-        pen += advance(*c);
     }
 }
 
