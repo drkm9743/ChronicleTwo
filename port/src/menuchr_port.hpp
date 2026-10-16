@@ -11,3 +11,6 @@ void PortStepQuickChangeEffect();
 
 // Whether the last quick change is still playing its effect; no new quick change starts until it ends.
 bool PortQuickChangeCoolingDown();
+
+// Completes a quick change the frame just opened, in that same frame, so the game never stops for its menu.
+void PortFinishQuickChange();
