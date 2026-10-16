@@ -17,7 +17,8 @@ constexpr int kRetailScratch = 0xA000;
 
 // Retail reads dmap<n>.cfg and dflr<n>.cfg into a 40 KiB scratch on the stack. The converted tables are
 // bigger (Mt. Gundor's dmap4.cfg is about 93 KiB), so reading one there ran over the stack and crashed
-// on the way to that dungeon or its floor map. The scratch is sized to the files instead.
+// on the way to that dungeon or its floor map. The scratch is sized to the files instead. The names are
+// the converted ones: the build rewrites retail literals in ps2/src, not in a port override.
 PORT_OVERRIDE void CDngFloorManager::LoadDataTable(int dungeon, mgCMemory *memory) {
     char menu_path[0x40];
     int  size = 0;
@@ -34,16 +35,8 @@ PORT_OVERRIDE void CDngFloorManager::LoadDataTable(int dungeon, mgCMemory *memor
     dng_no = dungeon;
 
     char table_paths[2][0x60];
-    std::snprintf(table_paths[0], sizeof table_paths[0], "menu/dngmap/dmap%d.cfg", dungeon);
-    std::snprintf(table_paths[1], sizeof table_paths[1], "menu/dngmap/dflr%d.cfg", dungeon);
-
-    // The tables live at the data root. An event that changed the directory without restoring it (the
-    // Sindain station scenes) left these relative names resolving under that directory, so the floor map
-    // opened from the world map found neither table and showed no rooms.
-    char previous_dir[0x100];
-    GetCurrentDir(previous_dir);
-    SetCurrentDir(NULL);
-    std::fprintf(stderr, "dngfloor: directory was \"%s\"\n", previous_dir);
+    std::snprintf(table_paths[0], sizeof table_paths[0], "menu/dngmap/dmap%d.cfg.json", dungeon);
+    std::snprintf(table_paths[1], sizeof table_paths[1], "menu/dngmap/dflr%d.cfg.json", dungeon);
 
     int largest = kRetailScratch;
     for (char *table : table_paths) {
@@ -65,11 +58,7 @@ PORT_OVERRIDE void CDngFloorManager::LoadDataTable(int dungeon, mgCMemory *memor
         if (size > 0) {
             AnalyzeFile((char *) data, size, memory);
         }
-        std::fprintf(stderr, "dngfloor: %s %d bytes (buffer %zu), %d grid cells, first %c\n", table, size, bytes,
-                     glid_num, size > 0 ? data[0] : '-');
     }
-
-    SetCurrentDir(previous_dir);
 
     std::sprintf(menu_path, "flrtitle%d.txt", dungeon);
     size = LoadFileMenu(menu_path, (u_long128 *) data, MENU_FILE_LOAD_DIRECT);
