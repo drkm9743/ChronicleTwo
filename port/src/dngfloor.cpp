@@ -43,6 +43,7 @@ PORT_OVERRIDE void CDngFloorManager::LoadDataTable(int dungeon, mgCMemory *memor
     char previous_dir[0x100];
     GetCurrentDir(previous_dir);
     SetCurrentDir(NULL);
+    std::fprintf(stderr, "dngfloor: directory was \"%s\"\n", previous_dir);
 
     int largest = kRetailScratch;
     for (char *table : table_paths) {
