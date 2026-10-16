@@ -1,5 +1,7 @@
 #include "common.h"
 
+#include <cstdio>
+
 #include "dngmenu.hpp"
 #include "mainloop.hpp"
 #include "memcard.hpp"
@@ -21,6 +23,9 @@ PORT_OVERRIDE int DngTreeMapKey() {
         if (TreeMap->select_glid == NULL && TreeMap->key_arg_no == DNG_TREE_MAP_SCREEN_MAP &&
             TreeMap->mode == MENU_ASK_MODE_NONE) {
             TreeMap->select_glid = TreeDngMap->GetEntranceRoomGlid();
+            std::fprintf(stderr, "dngmenu: no room under the cursor; entrance %p, %d grid cells\n",
+                         static_cast<void *>(TreeMap->select_glid),
+                         TreeDngMap->floor_manager != NULL ? TreeDngMap->floor_manager->glid_num : -1);
         }
 
         result = TreeMap->Step();

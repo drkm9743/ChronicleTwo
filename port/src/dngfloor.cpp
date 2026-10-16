@@ -57,6 +57,8 @@ PORT_OVERRIDE void CDngFloorManager::LoadDataTable(int dungeon, mgCMemory *memor
         if (size > 0) {
             AnalyzeFile((char *) data, size, memory);
         }
+        std::fprintf(stderr, "dngfloor: %s %d bytes (buffer %zu), %d grid cells, first %c\n", table, size, bytes,
+                     glid_num, size > 0 ? data[0] : '-');
     }
 
     std::sprintf(menu_path, "flrtitle%d.txt", dungeon);
